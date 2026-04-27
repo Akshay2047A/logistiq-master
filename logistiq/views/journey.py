@@ -172,13 +172,13 @@ def render(*args, **kwargs):
             fig_pie.update_layout(height=220, margin=dict(l=0, r=0, t=20, b=0), paper_bgcolor="rgba(0,0,0,0)", 
                                   font={"color": "#e7efff"}, showlegend=False)
             fig_pie.add_annotation(text="CO₂", x=0.5, y=0.5, font_size=20, showarrow=False)
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": True, "displaylogo": False, "modeBarButtonsToAdd": ["downloadSVG"]})
             
         with c3:
             pure_sea = weight * (850+720+165) * 0.010
             pure_air = weight * (850+720+165) * 0.500
             fig_bar = co2_comparison_chart(pure_sea/1000, rail_co2/1000, road_co2/1000, pure_air/1000)
-            st.plotly_chart(fig_bar, use_container_width=True)
+            st.plotly_chart(fig_bar, use_container_width=True, config={"displayModeBar": True, "displaylogo": False, "modeBarButtonsToAdd": ["downloadSVG"]})
 
     with side_col:
         # ── JOURNEY 5: Trade document checklist ──

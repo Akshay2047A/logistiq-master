@@ -81,7 +81,7 @@ def render():
         col_b.metric("EUR/INR", f"₹{rate * 1.085:.2f}", "")
 
         fig = C.fx_sparkline(fx_hist, "INR/USD")
-        st.plotly_chart(fig, use_container_width=True, key="fx_spark")
+        st.plotly_chart(fig, use_container_width=True, key="fx_spark", config={"displayModeBar": True, "displaylogo": False, "modeBarButtonsToAdd": ["downloadSVG"]})
 
         st.markdown("**💡 Impact Calculator**")
         shipment_val = st.number_input("Cargo value (₹ Cr)", 0.1, 500.0, 47.3, step=0.5, key="fx_val")
@@ -152,6 +152,9 @@ def render():
         for line in lines:
             if line.strip():
                 st.markdown(f"<div class='intel-box' style='margin:4px 0'>{line.strip()}</div>", unsafe_allow_html=True)
+                
+        if digest:
+            st.code(digest, language=None)
 
         from datetime import datetime
         st.caption(f"Last updated: {datetime.now().strftime('%H:%M IST')} | Next refresh in {max(0, int((digest_ttl - (now - st.session_state.get(digest_ts_key, 0))) / 60))} min")

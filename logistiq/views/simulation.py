@@ -305,7 +305,7 @@ def render():
                 col_l, col_m, col_r = st.columns([1.2, 1, 0.8])
                 with col_l:
                     st.markdown("#### Timeline")
-                    st.plotly_chart(C.simulation_gantt(), use_container_width=True, key="sim_gantt", height=200)
+                    st.plotly_chart(C.simulation_gantt(), use_container_width=True, key="sim_gantt", height=200, config={"displayModeBar": True, "displaylogo": False, "modeBarButtonsToAdd": ["downloadSVG"]})
                 with col_m:
                     st.markdown("#### Financials")
                     rows = FINANCIAL_TABLE.get(scenario_full, FINANCIAL_TABLE["🌀 Cyclone — Bay of Bengal Cat.3"])

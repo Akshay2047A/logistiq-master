@@ -116,7 +116,7 @@ def render():
                 "timestamp": datetime.now().isoformat(),
                 "ack": False,
             })
-            st.success("✅ Instruction transmitted — waiting for acknowledgment")
+            st.toast("📲 Instruction transmitted", icon="📲")
 
     # ── COLUMN 2: Flutter app mockup ──────────────────────
     with col2:
@@ -254,7 +254,8 @@ def render():
                 st.session_state.captain_reports.append(parsed)
                 firebase_push("/field_reports", parsed)
                 st.session_state["_last_parsed_report"] = parsed
-                st.success("✅ Synced to Firebase — Command center updated")
+                st.toast("✅ Synced to Firebase", icon="✅")
+                st.toast("📡 Report submitted", icon="📡")
                 st.rerun()
             else:
                 st.warning("Please enter a report text.")
@@ -284,4 +285,7 @@ def render():
   </div>
   {gemma_badge}
 </div>""", unsafe_allow_html=True)
+
+            import json
+            st.code(json.dumps(last, indent=2), language="json")
 

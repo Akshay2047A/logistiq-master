@@ -175,9 +175,9 @@ def render():
                 st.markdown(f"""
                 <div class='glass-card' style='padding:10px;{border}'>
                   <div style='font-size:12px;font-weight:700;color:#e7efff;margin-bottom:4px'>{v.get("name")}</div>
-                  <div style='font-size:10px;color:#94a3b8;margin-bottom:4px'>{v.get("cargo")} | {v.get("speed_knots")} kn</div>
+                  <div style='font-size:10px;color:#94a3b8;margin-bottom:4px'>{v.get("cargo_type")} | {v.get("speed_knots")} kn</div>
                   <div style='display:flex;justify-content:space-between;align-items:center'>
-                    {pill} <span style='font-size:10px'>ETA: {v.get("eta")}</span>
+                    {pill} <span style='font-size:10px'>ETA: {v.get("eta_utc")}</span>
                   </div>
                 </div>""", unsafe_allow_html=True)
 
@@ -196,7 +196,7 @@ def render():
                 st.rerun()
         else:
             fig = C.risk_matrix_chart(shipments_list)
-            st.plotly_chart(fig, use_container_width=True, key="ov_matrix")
+            st.plotly_chart(fig, use_container_width=True, key="ov_matrix", config={"displayModeBar": True, "displaylogo": False, "modeBarButtonsToAdd": ["downloadSVG"]})
 
             # Compact shipment summary
             for s in shipments_list[:3]:

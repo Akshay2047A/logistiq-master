@@ -71,6 +71,11 @@ def show_alert_panel():
             if shp:
                 st.session_state.selected_shipment = shp
             st.rerun()
+            
+    if st.button("🗑️ Clear All", use_container_width=True):
+        for k in unread.keys():
+            firebase_write(f"/alerts/{k}/ack", True)
+        st.rerun()
 
 # ── Navigation via query params (instant, no stale-render bug) ─────────────
 # Query param ?p=sea is used as the source of truth for current page.
@@ -203,6 +208,9 @@ Return ONLY valid JSON (no markdown):
     gem_status = st.session_state.get("gemini_status", "ok") if gemini_ok else "failed"
     gem_dot = "dot-green" if gem_status == "ok" else "dot-amber" if gem_status == "retrying" else "dot-red"
     gem_label = f"Gemini ({gem_status})"
+    import time
+    elapsed = (time.time() % 30)
+    remaining = int(30 - elapsed)
 
     st.markdown(f"""
 <div style='display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;'>
@@ -210,10 +218,13 @@ Return ONLY valid JSON (no markdown):
   <span style='font-size:11px;color:#94a3b8'><span class='status-dot {_dot(fb_ok)}'></span>Firebase</span>
   <span style='font-size:11px;color:#94a3b8'><span class='status-dot {_dot(weather_ok)}'></span>Weather</span>
   <span style='font-size:11px;color:#94a3b8'><span class='status-dot {"dot-amber" if cyclone_on else "dot-green"}'></span>{"⚠ CYCLONE" if cyclone_on else "Clear"}</span>
+  <span style='font-size:11px;color:#94a3b8'>⏱ Next refresh in {remaining}s</span>
 </div>""", unsafe_allow_html=True)
 
     if st.session_state.demo_mode:
-        st.warning("🟡 **Demo Mode** active", icon="⚠️")
+        st.markdown("<div style='background:rgba(251,191,36,0.15);color:#fbbf24;padding:6px;border-radius:4px;font-size:12px;font-weight:700;text-align:center'>🟡 DEMO MODE</div>", unsafe_allow_html=True)
+    else:
+        st.markdown("<div style='background:rgba(74,222,128,0.15);color:#4ade80;padding:6px;border-radius:4px;font-size:12px;font-weight:700;text-align:center'>🟢 LIVE MODE</div>", unsafe_allow_html=True)
 
     st.markdown("<hr style='border-color:rgba(96,165,250,0.1);margin:0 0 8px'>", unsafe_allow_html=True)
 

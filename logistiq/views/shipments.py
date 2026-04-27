@@ -195,6 +195,10 @@ def render_add_form():
 
 def render_shipment_list():
     """Compact shipment cards for sidebar."""
+    from difflib import SequenceMatcher
+    def fuzzy_match(q, text):
+        return SequenceMatcher(None, q.lower(), text.lower()).ratio() > 0.6
+
     shipments = st.session_state.shipments
     
     query = st.text_input("🔍 Search...", placeholder="ID, Origin, or Destination", key="shipment_search").lower()
@@ -221,15 +225,21 @@ def render_shipment_list():
     """, unsafe_allow_html=True)
     
     count = 0
-    for idx, s in enumerate(shipments):
-        match = any(query in field.lower() for field in [
-            s.get("id", ""), s.get("origin", ""), s.get("destination", ""),
-            s.get("cargo_type", ""), s.get("cargo_desc", "")
-        ])
-        if query and not match:
-            continue
-            
+    displayed_shipments = []
+    for s in shipments:
+        if query:
+            match = any(fuzzy_match(query, field) for field in [
+                s.get("id", ""), s.get("origin", ""), s.get("destination", ""),
+                s.get("cargo_type", ""), s.get("cargo_desc", "")
+            ])
+            if not match:
+                continue
+        displayed_shipments.append(s)
         count += 1
+        
+    st.caption(f"{count} shipments found")
+    
+    for idx, s in enumerate(displayed_shipments):
         risk = s.get("risk_data") or {}
         level = risk.get("risk_level", "Unknown")
         level_icons = {"Critical": "🚨", "High": "🔴", "Medium": "🟡", "Low": "🟢"}
@@ -244,9 +254,6 @@ def render_shipment_list():
             st.session_state.active_page = "shipment_detail"
             st.query_params["p"] = "shipment_detail"
             st.rerun()
-            
-    if count == 0 and shipments:
-        st.caption("No matching shipments found.")
 
 
 def render_shipment_detail(s: dict):
@@ -261,7 +268,7 @@ def render_shipment_detail(s: dict):
     g1, g2 = st.columns([1, 2])
     with g1:
         fig = C.risk_gauge(score)
-        st.plotly_chart(fig, use_container_width=True, key=f"det_gauge_{s.get('id')}")
+        st.plotly_chart(fig, use_container_width=True, key=f"det_gauge_{s.get('id')}", config={"displayModeBar": True, "displaylogo": False, "modeBarButtonsToAdd": ["downloadSVG"]})
     with g2:
         st.markdown(f"**{s.get('cargo_desc','')}**")
         st.markdown(f"`{s.get('origin','')}` → `{s.get('destination','')}`")

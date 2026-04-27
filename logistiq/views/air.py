@@ -56,7 +56,7 @@ def render():
         fig = C.co2_comparison_chart(
             sea=weight * 0.8, rail=weight * 0.3, road=weight * 1.2, air=co2
         )
-        st.plotly_chart(fig, use_container_width=True, key="air_co2")
+        st.plotly_chart(fig, use_container_width=True, key="air_co2", config={"displayModeBar": True, "displaylogo": False, "modeBarButtonsToAdd": ["downloadSVG"]})
 
     # ── Escalation threshold ───────────────────────────
     st.markdown("---")

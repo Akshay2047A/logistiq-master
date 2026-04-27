@@ -216,6 +216,7 @@ def render():
                 with st.spinner("Scanning via Gemini Search Grounding..."):
                     intel = get_live_intelligence("Current shipping conditions Bay of Bengal ports Chennai Visakhapatnam")
                     st.markdown(f"<div class='intel-box'>{intel} <br><br><i>Powered by Gemini Search</i></div>", unsafe_allow_html=True)
+                    st.code(intel, language=None)
 
             with st.expander("⚡ Additional Scenarios"):
                 if st.button("🔴 Port Strike — Chennai Dock Workers", use_container_width=True):
@@ -227,7 +228,14 @@ def render():
                 if st.button("🌐 Live Geopolitical Intel", use_container_width=True):
                     with st.spinner("Fetching geopolitical intel..."):
                         geo = get_geopolitical_intel(demo_responses)
-                        st.markdown(f"<div class='intel-box'><b>{geo['primary_chokepoint']}</b><br>{geo['analysis']}</div>", unsafe_allow_html=True)
+                        intel_html = ""
+                        for k, v in geo.items():
+                            if isinstance(v, dict) and "risk" in v:
+                                name = k.replace("_", " ").title()
+                                intel_html += f"<b>{name}</b> ({v['risk']}): {v.get('detail', '')}<br>"
+                        if not intel_html:
+                            intel_html = "No significant chokepoint data."
+                        st.markdown(f"<div class='intel-box'>{intel_html}</div>", unsafe_allow_html=True)
 
             for port in ports_data:
                 cong = port.get("congestion_level", "Moderate")
@@ -334,7 +342,7 @@ def _render_command_card(data: dict):
                 "instruction": "Divert to Visakhapatnam Port. Transfer to SCR 58501. Acknowledge.",
                 "alt_port": cascade.get("sea", {}).get("alt_port", "Visakhapatnam"),
             })
-            st.success("✅ Reroute accepted and transmitted to vessel.")
+            st.toast("✅ Cascade reroute activated!", icon="✅")
             st.rerun()
     with rej:
         if st.button("❌ REJECT", use_container_width=True, key="reject_sea"):
