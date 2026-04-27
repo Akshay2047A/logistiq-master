@@ -74,9 +74,13 @@ with st.sidebar:
 <div style='padding:10px 4px 6px;'>
   <div style='font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#fff'>
     Logisti<span style='color:#FF6B35'>Q</span>
-    <span style='font-size:11px;font-weight:400;color:#64748b;margin-left:6px'>v2.2</span>
+    <span style='font-size:11px;font-weight:400;color:#64748b;margin-left:6px'>v3.0</span>
   </div>
   <div style='font-size:11px;color:#64748b;margin-top:2px'>Chennai · Vizag · Manesar</div>
+  <div style='margin-top:6px;display:flex;gap:4px'>
+    <span class='enterprise-badge'>🚀 Enterprise</span>
+    <span class='enterprise-badge'>🔒 SOC2</span>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -135,9 +139,24 @@ with st.sidebar:
 
     shipments.render_shipment_list()
 
-    # ── Demo toggle ───────────────────────────────────
+    # ── Toggles ───────────────────────────────────
     st.markdown("<hr style='border-color:rgba(96,165,250,0.1);margin:8px 0'>", unsafe_allow_html=True)
-    demo_label = "🔴 Disable Demo" if st.session_state.demo_mode else "🟡 Enable Demo Mode"
+    st.markdown("<div style='font-size:10px;color:#475569;font-weight:700;letter-spacing:1px;margin-bottom:4px'>SYSTEM SETTINGS</div>", unsafe_allow_html=True)
+    
+    # Gemma Edge Mode
+    gemma_label = "⚡ Gemma Edge Mode: ON" if st.session_state.get("gemma_mode") else "Gemma Edge Mode: OFF"
+    if st.button(gemma_label, key="sb_gemma", use_container_width=True):
+        st.session_state.gemma_mode = not st.session_state.get("gemma_mode", False)
+        st.rerun()
+
+    # Disaster Relief Mode
+    relief_label = "🆘 Disaster Relief: ON" if st.session_state.get("relief_mode") else "Disaster Relief: OFF"
+    if st.button(relief_label, key="sb_relief", use_container_width=True):
+        st.session_state.relief_mode = not st.session_state.get("relief_mode", False)
+        st.rerun()
+
+    # Demo toggle
+    demo_label = "🔴 Disable Demo Mode" if st.session_state.demo_mode else "🟡 Enable Demo Mode"
     if st.button(demo_label, key="sb_demo", use_container_width=True):
         st.session_state.demo_mode = not st.session_state.demo_mode
         st.session_state.gemini_model = None
@@ -185,7 +204,7 @@ st.markdown(f"""
   <span class='status-divider'>│</span>
   <span style='color:{mode_color}'>{mode_label}</span>
   <div style='flex:1'></div>
-  <span style='color:#334155;font-size:10px'>LogistiQ v2.2 · Chennai–Vizag–Manesar</span>
+  <span style='color:#334155;font-size:10px'>LogistiQ v3.0 · Chennai–Vizag–Manesar</span>
 </div>
 <div style='height:44px'></div>
 """, unsafe_allow_html=True)

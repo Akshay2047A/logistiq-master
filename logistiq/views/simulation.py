@@ -10,33 +10,38 @@ from logistiq.utils.gemini import get_ai_reroute
 from logistiq.utils.firebase import firebase_write
 
 SCENARIOS = {
-    "🌀 Cyclone — Bay of Bengal Cat.3": {
-        "desc": "Category 3 cyclone at 14.8°N 85.6°E blocking Chennai Port.",
-        "cargo": "MV Chennai Star — 4,200 Maruti engine blocks — ₹47.3 Cr",
+    "🌀 Cyclone": {
+        "desc": "Cat 3 cyclone at 14.8°N 85.6°E blocks Chennai Port.",
+        "cargo": "MV Chennai Star — ₹47.3 Cr",
+        "full_name": "🌀 Cyclone — Bay of Bengal Cat.3",
         "color": "#f87171",
         "icon": "🌀",
     },
-    "🔴 Port Strike — Chennai Dock Workers": {
-        "desc": "72-hour strike. 8 vessels affected. No loading/unloading at Chennai Port.",
+    "🔴 Port Strike": {
+        "desc": "72-hr strike. 8 vessels affected.",
         "cargo": "8 vessels, ₹32 Cr total exposure",
+        "full_name": "🔴 Port Strike — Chennai Dock Workers",
         "color": "#fb923c",
         "icon": "🔴",
     },
-    "🌊 Tidal Trap — Draft Incompatibility": {
-        "desc": "MV Chennai Star draft 15.2m exceeds Chennai Port limit of 14.0m.",
-        "cargo": "MV Chennai Star — ₹47.3 Cr — cannot dock",
+    "🌊 Tidal Trap": {
+        "desc": "MV Chennai Star draft 15.2m exceeds Chennai limit 14.0m.",
+        "cargo": "MV Chennai Star — ₹47.3 Cr",
+        "full_name": "🌊 Tidal Trap — Draft Incompatibility",
         "color": "#fbbf24",
         "icon": "🌊",
     },
-    "⚓ Red Sea Diversion — Houthi Risk": {
-        "desc": "Insurance suspended for Red Sea transit. Cape of Good Hope diversion required.",
-        "cargo": "Europe-origin electronics imports — 3-week delay",
+    "⚓ Red Sea": {
+        "desc": "Insurance suspended. Cape of Good Hope diversion.",
+        "cargo": "EU electronics imports",
+        "full_name": "⚓ Red Sea Diversion — Houthi Risk",
         "color": "#a78bfa",
         "icon": "⚓",
     },
-    "🚛 NH16 Highway Closure — Floods": {
-        "desc": "Rajahmundry–Vijayawada section flooded. 72-hr closure. All road freight diverted.",
-        "cargo": "12 trucks, Chennai→Hyderabad corridor, ₹18 Cr",
+    "🚛 NH16 Flood": {
+        "desc": "Rajahmundry–Vijayawada flooded. 72-hr closure.",
+        "cargo": "12 trucks, ₹18 Cr",
+        "full_name": "🚛 NH16 Highway Closure — Floods",
         "color": "#4ade80",
         "icon": "🚛",
     },
@@ -76,40 +81,63 @@ def render():
     st.caption("Interactive scenario modeling — powered by Gemini 1.5 Pro + real logistics data")
 
     # ── Control panel ──────────────────────────────────
-    ctrl_col, main_col = st.columns([1, 2.5])
+    ctrl_col, main_col = st.columns([1.2, 2.3])
 
     with ctrl_col:
         st.markdown("#### ⚙ Simulation Controls")
-        scenario = st.selectbox(
-            "Choose Scenario", list(SCENARIOS.keys()),
-            index=list(SCENARIOS.keys()).index(st.session_state.sim_scenario),
-            key="sim_scenario_select",
-        )
-        st.session_state.sim_scenario = scenario
-        meta = SCENARIOS[scenario]
+        
+        # Scenario tiles
+        st.markdown("<div style='font-size:12px;color:#94a3b8;margin-bottom:8px'>Select Scenario</div>", unsafe_allow_html=True)
+        keys = list(SCENARIOS.keys())
+        current = st.session_state.get("sim_scenario_short", keys[0])
+        
+        t1, t2 = st.columns(2)
+        for i, key in enumerate(keys):
+            col = t1 if i % 2 == 0 else t2
+            meta = SCENARIOS[key]
+            with col:
+                is_sel = (current == key)
+                border = "border-color:#FF6B35;background:rgba(255,107,53,0.1);box-shadow:0 0 10px rgba(255,107,53,0.2)" if is_sel else ""
+                if st.button(key, use_container_width=True, key=f"sim_tile_{i}"):
+                    st.session_state.sim_scenario_short = key
+                    st.session_state.sim_scenario = SCENARIOS[key]["full_name"]
+                    st.rerun()
 
+        current = st.session_state.get("sim_scenario_short", keys[0])
+        meta = SCENARIOS[current]
+        
         st.markdown(f"""
-<div class='sim-event'>
-  <div style='font-size:24px'>{meta['icon']}</div>
-  <div style='font-size:12px;color:#94a3b8;margin-top:4px'>{meta['desc']}</div>
-  <div style='font-size:11px;color:#64748b;margin-top:4px'>Cargo: {meta['cargo']}</div>
+<div class='glass-card' style='border-color:{meta["color"]}44'>
+  <div style='font-size:12px;font-weight:700;color:{meta["color"]};margin-bottom:4px'>SCENARIO BRIEF</div>
+  <div style='font-size:12px;color:#e7efff;margin-bottom:6px'>{meta['desc']}</div>
+  <div style='font-size:11px;color:#94a3b8'><b>Cargo:</b> {meta['cargo']}</div>
 </div>""", unsafe_allow_html=True)
 
-        st.markdown("**Scenario Parameters**")
-        intensity = st.slider("Storm Intensity (Cat)", 1, 5, 3, key="sim_intensity")
-        strike_dur = st.slider("Strike Duration (hrs)", 24, 168, 72, key="sim_strike")
-        cargo_val  = st.slider("Cargo Value at Risk (₹ Cr)", 10, 500, 47, key="sim_val")
-        buffer_hrs = st.slider("Assembly Line Buffer (hrs)", 24, 120, 96, key="sim_buf")
+        st.markdown("**Adjust Parameters**")
+        if "Cyclone" in current:
+            st.slider("Storm Intensity (Cat)", 1, 5, 3, key="sim_intensity")
+            cargo_val = st.slider("Cargo Value at Risk (₹ Cr)", 10, 500, 47, key="sim_val")
+        elif "Strike" in current:
+            st.slider("Strike Duration (hrs)", 24, 168, 72, key="sim_strike")
+            cargo_val = st.slider("Cargo Value at Risk (₹ Cr)", 10, 500, 32, key="sim_val")
+        else:
+            cargo_val = st.slider("Cargo Value at Risk (₹ Cr)", 10, 500, 47, key="sim_val")
+            st.slider("Assembly Line Buffer (hrs)", 24, 120, 96, key="sim_buf")
 
         st.markdown("---")
         run_btn = st.button("▶ RUN SIMULATION", type="primary", use_container_width=True, key="run_sim")
+        
+        if st.session_state.get("last_sim_savings"):
+            st.markdown(f"<div style='font-size:12px;color:#4ade80;text-align:center;margin-top:8px'>Last run savings: ₹{st.session_state.last_sim_savings}Cr</div>", unsafe_allow_html=True)
+
         if st.session_state.sim_stage > 0:
-            if st.button("↺ Reset", use_container_width=True, key="reset_sim"):
+            if st.button("↺ Reset Simulation", use_container_width=True, key="reset_sim"):
                 st.session_state.sim_stage = 0
                 st.session_state.sim_running = False
                 st.session_state.reroute_data = None
                 st.session_state.cyclone_triggered = False
                 st.session_state.reroute_accepted = False
+                st.session_state.sim_reject_mode = False
                 st.rerun()
 
     # ── Main simulation area ───────────────────────────
@@ -117,150 +145,218 @@ def render():
         if run_btn and st.session_state.sim_stage == 0:
             st.session_state.sim_stage = 1
             st.session_state.cyclone_triggered = True
+            st.session_state.sim_reject_mode = False
             st.rerun()
 
         stage = st.session_state.sim_stage
+        scenario_full = st.session_state.get("sim_scenario", SCENARIOS["🌀 Cyclone"]["full_name"])
 
         # STAGE 0: Pre-event baseline
         if stage == 0:
-            st.markdown("#### 📍 Pre-Event Baseline — All Systems Normal")
+            st.markdown("#### 📍 Pre-Event — Normal Operations")
+            st.markdown("""
+<div style='background:rgba(74,222,128,0.1);color:#4ade80;padding:8px 14px;border-radius:8px;border:1px solid #4ade80;font-size:13px;font-weight:700;margin-bottom:12px'>
+  System Status: ALL GREEN ✅
+</div>""", unsafe_allow_html=True)
             fmap = M.make_base_map()
             M.add_ports(fmap, ports_data)
             M.add_vessels(fmap, vessels_data)
             M.add_trucks(fmap, trucks_data)
             M.add_rail_corridor(fmap, rail_schedules_data)
-            M.render_map(fmap, height=380)
+            M.render_map(fmap, height=360)
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Vessels", "3", "All green")
-            c2.metric("Exposure", "₹47.3 Cr", "At risk")
-            c3.metric("ETA Confidence", "96%", "High")
-            c4.metric("SLA Status", "ON TIME", "✅")
+            c1.metric("Vessels", "3", "At sea")
+            c2.metric("Exposure", "₹0 Cr", "Safe")
+            c3.metric("SLA", "96%", "High")
+            c4.metric("Weather", "Clear", "Normal")
+            st.caption("Select a scenario above and click RUN to see AI-powered cascade rerouting")
 
         # STAGE 1: Event triggered
         elif stage == 1:
-            st.markdown(f"#### {meta['icon']} T+0: Event Detected")
-            st.error(f"**{scenario}**\n\n{meta['desc']}")
+            st.markdown(f"""
+<div style='background:rgba(248,113,113,0.1);border:1px solid #f87171;color:#f87171;padding:12px;border-radius:8px;font-size:14px;font-weight:700;animation:pulse 1s infinite;margin-bottom:12px;text-align:center'>
+  {meta['icon']} EVENT DETECTED — {scenario_full}
+</div>""", unsafe_allow_html=True)
+
             fmap = M.make_base_map()
             M.add_ports(fmap, ports_data)
             M.add_vessels(fmap, vessels_data, at_risk_ids={"VSL-CHN-001"})
-            M.add_cyclone(fmap)
-            M.render_map(fmap, height=340)
+            if "Cyclone" in current: M.add_cyclone(fmap)
+            M.render_map(fmap, height=320)
 
-            with st.container():
-                st.markdown("""
-<div class='sim-step'><span class='step-check'>✅</span> Cyclone detected at 14.8°N 85.6°E — Cat.3</div>
-<div class='sim-step'><span class='step-check'>✅</span> MV Chennai Star flagged at risk — flashing red on map</div>
-<div class='sim-step'><span class='step-check'>🔄</span> Calculating financial exposure...</div>
-""", unsafe_allow_html=True)
-
+            # Animated Financial Counter
             exposure_placeholder = st.empty()
-            for val in range(0, cargo_val + 1, max(1, cargo_val // 20)):
+            for val in range(0, cargo_val * 10 + 1, max(1, cargo_val * 10 // 20)):
+                v = val / 10.0
+                color = "#4ade80" if v < cargo_val*0.3 else "#fbbf24" if v < cargo_val*0.7 else "#f87171"
                 exposure_placeholder.markdown(
-                    f"<div style='font-size:32px;color:#f87171;font-weight:700;text-align:center'>₹{val:.1f} Cr AT RISK</div>",
+                    f"<div style='font-size:36px;color:{color};font-weight:800;text-align:center;margin:10px 0;font-variant-numeric:tabular-nums'>₹{v:.1f} Cr AT RISK</div>",
                     unsafe_allow_html=True
                 )
                 time.sleep(0.04)
+            exposure_placeholder.markdown(
+                f"<div style='font-size:36px;color:#f87171;font-weight:800;text-align:center;margin:10px 0;font-variant-numeric:tabular-nums'>₹{cargo_val:.1f} Cr AT RISK</div>",
+                unsafe_allow_html=True
+            )
 
-            if st.button("⟶ Get AI Reroute Plan", type="primary", use_container_width=True, key="stage1_next"):
-                with st.spinner("🤖 Gemini 1.5 Pro analyzing with Google Search Grounding…"):
-                    st.session_state.reroute_data = get_ai_reroute(
-                        vessels_data, ports_data, rail_schedules_data, trucks_data, demo_responses
-                    )
+            # Cascade Impact Visual
+            st.markdown("#### Cascade Impact")
+            impact_ph = st.empty()
+            impacts = [
+                "🚢 MV Chennai Star — AFFECTED ⚠",
+                "🏭 Maruti Manesar — Assembly line at risk",
+                "🚂 SCR Train 58501 — Awaiting cargo",
+                "🚛 3 trucks — Idle at Chennai Port"
+            ]
+            for i in range(1, 5):
+                html = ""
+                for j, imp in enumerate(impacts):
+                    if j < i:
+                        html += f"<div style='color:#f87171;padding:6px 12px;background:rgba(248,113,113,0.1);margin-bottom:4px;border-radius:6px;font-size:13px;font-weight:600'>❌ {imp}</div>"
+                    else:
+                        html += f"<div style='color:#94a3b8;padding:6px 12px;margin-bottom:4px;font-size:13px'>⏳ {imp}</div>"
+                impact_ph.markdown(html, unsafe_allow_html=True)
+                time.sleep(0.3)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🤖 Get AI Reroute Plan", type="primary", use_container_width=True, key="stage1_next"):
                 st.session_state.sim_stage = 2
                 st.rerun()
 
         # STAGE 2: AI plan + results
         elif stage == 2:
-            data = st.session_state.reroute_data or demo_responses.get("reroute", {})
+            if not st.session_state.reroute_data and not st.session_state.get("sim_reject_mode", False):
+                # Animate thinking
+                think_ph = st.empty()
+                steps = [
+                    ("🔍", "Gemini searching Google for live port conditions..."),
+                    ("🌊", "Checking tidal charts for Visakhapatnam..."),
+                    ("🚂", "Verifying SCR Train 58501 availability..."),
+                    ("💰", "Calculating financial impact..."),
+                    ("✅", "Cascade reroute plan ready")
+                ]
+                html_accum = ""
+                for icon, text in steps:
+                    html_accum += f"<div style='padding:8px;font-size:13px;color:#e7efff'><b>{icon}</b> {text}</div>"
+                    think_ph.markdown(f"<div class='glass-card'>{html_accum}</div>", unsafe_allow_html=True)
+                    time.sleep(0.4)
+                
+                st.session_state.reroute_data = get_ai_reroute(
+                    vessels_data, ports_data, rail_schedules_data, trucks_data, demo_responses
+                )
+                think_ph.empty()
+                st.rerun()
 
-            st.markdown("#### 🤖 AI Cascade Reroute Plan")
-            cascade = data.get("cascade", {})
-            fin     = data.get("financial", {})
-            time_d  = data.get("time", {})
-            conf    = data.get("confidence", 94)
+            if st.session_state.get("sim_reject_mode", False):
+                st.markdown("<h3 style='color:#f87171'>Consequences of Rejection</h3>", unsafe_allow_html=True)
+                cost_ph = st.empty()
+                msgs = [
+                    ("T+0: Decision to reject reroute", 0),
+                    ("T+6h: Demurrage charges begin: ₹18L/day", 0.18),
+                    ("T+18h: Maruti Manesar issues stock-out alert", 0.5),
+                    ("T+48h: Assembly line SHUTDOWN", 2.4),
+                    ("T+96h: Contractual penalties applied", 8.5)
+                ]
+                total = 0
+                for msg, cost in msgs:
+                    total += cost
+                    cost_ph.markdown(
+                        f"<div style='text-align:center;color:#f87171;font-size:28px;font-weight:700;background:rgba(248,113,113,0.1);padding:20px;border-radius:12px'>"
+                        f"⚠ {msg}<br><br>Loss: ₹{total:.2f} Cr</div>",
+                        unsafe_allow_html=True
+                    )
+                    time.sleep(1.0)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("🤖 It's not too late — Accept the reroute?", type="primary", use_container_width=True):
+                    st.session_state.sim_reject_mode = False
+                    st.session_state.reroute_accepted = True
+                    st.session_state.sim_stage = 3
+                    st.rerun()
 
-            # Animate cascade steps
-            steps = [
-                ("✅", f"🚢 Sea: {cascade.get('sea',{}).get('action','Divert to Vizag')} — {cascade.get('sea',{}).get('reason','')}"),
-                ("✅", f"🚂 Rail: Train {cascade.get('rail',{}).get('train_id','58501')} ({cascade.get('rail',{}).get('wagons_needed',12)} wagons) — ETA: {cascade.get('rail',{}).get('full_eta','36 hrs')}"),
-                ("✅", f"🚛 Road: {cascade.get('road',{}).get('action','3 trucks repositioned')} — {cascade.get('road',{}).get('eta_hours',5.4)} hrs"),
-            ]
-            st.markdown(f"""
+            else:
+                data = st.session_state.reroute_data
+                cascade = data.get("cascade", {})
+                fin     = data.get("financial", {})
+                conf    = data.get("confidence", 94)
+
+                st.markdown(f"""
 <div class='cmd-card'>
   <div class='cmd-card-header'>🤖 AI CASCADE REROUTE &nbsp; <span class='badge badge-safe'>Confidence: {conf}%</span></div>
   <p><b>{data.get('primary_recommendation','Divert MV Chennai Star to Visakhapatnam Port, execute rail-road cascade.')}</b></p>
-  {''.join(f"<div class='sim-step'><span class='step-check'>{s[0]}</span> {s[1]}</div>" for s in steps)}
+  <div class='sim-step'><span class='step-check'>✅</span> 🚢 Sea: {cascade.get('sea',{}).get('action','Divert to Vizag')}</div>
+  <div class='sim-step'><span class='step-check'>✅</span> 🚂 Rail: Train 58501 ({cascade.get('rail',{}).get('wagons_needed',12)} wagons)</div>
+  <div class='sim-step'><span class='step-check'>✅</span> 🚛 Road: {cascade.get('road',{}).get('action','3 trucks repositioned')}</div>
 </div>""", unsafe_allow_html=True)
 
-            # Gantt + financial
-            st.markdown("#### 📅 Route Timeline")
-            st.plotly_chart(C.simulation_gantt(), use_container_width=True, key="sim_gantt")
-
-            st.markdown("#### 💰 Financial Comparison")
-            rows = FINANCIAL_TABLE.get(scenario, FINANCIAL_TABLE["🌀 Cyclone — Bay of Bengal Cat.3"])
-            table_html = """
-<table style='width:100%;border-collapse:collapse;font-size:13px'>
-  <tr style='border-bottom:1px solid #1e3a5f'>
-    <th style='text-align:left;padding:8px;color:#94a3b8'>Scenario</th>
-    <th style='text-align:right;padding:8px;color:#94a3b8'>Cost (₹ Cr)</th>
-    <th style='text-align:right;padding:8px;color:#94a3b8'>Time (hrs)</th>
-  </tr>"""
-            row_styles = ["color:#f87171", "color:#4ade80", "color:#fbbf24"]
-            for i, (label, cost, t) in enumerate(rows):
-                table_html += f"<tr style='border-bottom:1px solid #1e293b'><td style='padding:8px;{row_styles[i]}'>{label}</td><td style='text-align:right;padding:8px'>{cost}</td><td style='text-align:right;padding:8px'>{t}</td></tr>"
-            table_html += "</table>"
-            st.markdown(f"<div class='glass-card'>{table_html}</div>", unsafe_allow_html=True)
-
-            # Social impact
-            st.markdown("#### 🌱 Social Impact Protected")
-            st.markdown("""
-<div class='social-box' style='display:flex;flex-wrap:wrap;gap:12px;justify-content:center;font-size:20px'>
-  <div>👷 <b style='font-size:13px'>340 dock workers</b></div>
-  <div>🏭 <b style='font-size:13px'>2,300 plant workers</b></div>
-  <div>🚜 <b style='font-size:13px'>42 farmers</b></div>
-  <div>💊 <b style='font-size:13px'>3 hospitals</b></div>
+                col_l, col_m, col_r = st.columns([1.2, 1, 0.8])
+                with col_l:
+                    st.markdown("#### Timeline")
+                    st.plotly_chart(C.simulation_gantt(), use_container_width=True, key="sim_gantt", height=200)
+                with col_m:
+                    st.markdown("#### Financials")
+                    rows = FINANCIAL_TABLE.get(scenario_full, FINANCIAL_TABLE["🌀 Cyclone — Bay of Bengal Cat.3"])
+                    table_html = "<table style='width:100%;font-size:11px'>"
+                    for label, cost, t in rows:
+                        table_html += f"<tr><td style='padding:4px 0'>{label}</td><td style='text-align:right'>₹{cost}</td></tr>"
+                    table_html += "</table>"
+                    st.markdown(f"<div class='glass-card'>{table_html}</div>", unsafe_allow_html=True)
+                with col_r:
+                    st.markdown("#### Impact")
+                    st.markdown("""
+<div class='social-box' style='font-size:11px;padding:8px'>
+  <div>👷 <b>340</b> dock workers</div><div style='height:4px'></div>
+  <div>🏭 <b>2,300</b> plant workers</div><div style='height:4px'></div>
+  <div>🚜 <b>42</b> farmers</div><div style='height:4px'></div>
+  <div>💊 <b>3</b> hospitals</div>
 </div>""", unsafe_allow_html=True)
 
-            # Accept / Reject
-            st.markdown("---")
-            acc_col, rej_col = st.columns(2)
-            with acc_col:
-                if st.button("✅ ACCEPT FULL CASCADE REROUTE", type="primary", use_container_width=True, key="sim_accept"):
+                with st.expander("🌐 Live Intelligence", expanded=False):
+                    st.markdown(f"<div class='intel-box'>{data.get('live_intel','')}</div>", unsafe_allow_html=True)
+                    st.caption("Powered by Gemini 1.5 Pro + Google Search Grounding")
+
+                st.markdown("---")
+                if st.button("✅ ACCEPT FULL CASCADE REROUTE", type="primary", use_container_width=True):
                     st.session_state.reroute_accepted = True
                     st.session_state.sim_stage = 3
+                    st.session_state.last_sim_savings = fin.get("net_savings_crore", 8.84)
                     firebase_write("/active_reroutes/MV_Chennai_Star", {
                         "vessel_id": "VSL-CHN-001", "status": "active",
                         "instruction": "Divert to Visakhapatnam Port. Transfer to SCR 58501. Acknowledge.",
                     })
                     st.rerun()
-            with rej_col:
-                if st.button("❌ REJECT — Show Consequences", use_container_width=True, key="sim_reject"):
-                    st.error("**Rejecting reroute…**")
-                    cost_ph = st.empty()
-                    for t in range(0, 241, 10):
-                        cost_ph.markdown(
-                            f"<div style='text-align:center;color:#f87171;font-size:28px;font-weight:700'>"
-                            f"₹{t * 10_00_000:,} total losses at T+{t} hrs</div>",
-                            unsafe_allow_html=True
-                        )
-                        time.sleep(0.04)
+                st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+                if st.button("❌ REJECT — Show Consequences", use_container_width=True):
+                    st.session_state.sim_reject_mode = True
+                    st.rerun()
 
         # STAGE 3: Reroute accepted — animated map
         elif stage == 3:
-            st.success("✅ Reroute accepted and transmitted to MV Chennai Star")
             fmap = M.make_base_map()
             M.add_ports(fmap, ports_data)
             M.add_vessels(fmap, vessels_data, at_risk_ids={"VSL-CHN-001"})
-            M.add_cyclone(fmap)
+            if "Cyclone" in current: M.add_cyclone(fmap)
             M.add_reroute_path(fmap)
             M.add_rail_corridor(fmap, rail_schedules_data)
-            M.render_map(fmap, height=380)
+            M.render_map(fmap, height=360)
+            
             st.markdown("""
-<div class='glass-card'>
-  <div class='sim-step'><span class='step-check'>✅</span> Captain acknowledged — new heading set to 17.68°N 83.22°E</div>
-  <div class='sim-step'><span class='step-check'>✅</span> SCR Train 58501 held at Vizag platform 7B</div>
-  <div class='sim-step'><span class='step-check'>✅</span> 3 trucks repositioned from Chennai to Vizag SCR Terminal</div>
-  <div class='sim-step'><span class='step-check'>✅</span> Maruti Manesar notified — ETA 51 hrs (within 96 hr deadline)</div>
-  <div class='sim-step'><span class='step-check'>✅</span> Firebase updated — all active reroutes written</div>
+<div class='glass-card' style='border-color:#4ade80;box-shadow:0 0 20px rgba(74,222,128,0.2)'>
+  <div style='font-size:16px;font-weight:800;color:#4ade80;margin-bottom:12px;text-align:center'>✅ CASCADE REROUTE COMPLETE</div>
+  <div class='sim-step'><span class='step-check'>✅</span> 🚢 Captain Rajesh acknowledged — New heading set (T+0)</div>
+  <div class='sim-step'><span class='step-check'>✅</span> 🚂 Train 58501 held at Platform 7B (T+2min)</div>
+  <div class='sim-step'><span class='step-check'>✅</span> 🚛 3 trucks repositioned to Vizag (T+4min)</div>
+  <div class='sim-step'><span class='step-check'>✅</span> 🏭 Maruti Manesar notified — ETA 51hrs (T+5min)</div>
+  <div class='sim-step'><span class='step-check'>✅</span> 💰 Assembly line protected — ₹8.84Cr saved</div>
 </div>""", unsafe_allow_html=True)
+            st.success("✅ All changes synced to Firebase")
             st.balloons()
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Simulate Next Scenario", use_container_width=True):
+                st.session_state.sim_stage = 0
+                st.session_state.sim_running = False
+                st.session_state.reroute_data = None
+                st.session_state.cyclone_triggered = False
+                st.session_state.reroute_accepted = False
+                st.rerun()

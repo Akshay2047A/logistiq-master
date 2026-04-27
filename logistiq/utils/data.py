@@ -203,3 +203,25 @@ def sla_breach_predictor(deadline_hours: float, current_eta_hours: float, penalt
         "penalty_lakh": penalty,
         "breach_probability_pct": probability,
     }
+
+
+def get_vessel_position_estimate(vessel: dict) -> dict:
+    import datetime
+    if st.session_state.get("cyclone_triggered", False) and vessel.get("id") == "VSL-CHN-001":
+        return {"estimated_lat": vessel["lat"], "estimated_lon": vessel["lon"]}
+    
+    now = datetime.datetime.now()
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elapsed_hours = (now - start_of_month).total_seconds() / 3600.0
+    
+    speed = vessel.get("speed_knots", 12)
+    dist_nm = speed * elapsed_hours
+    dist_deg = dist_nm / 60.0
+    
+    new_lat = vessel["lat"] + (dist_deg * 0.5) % 5.0
+    new_lon = vessel["lon"] - (dist_deg * 0.5) % 5.0
+    
+    return {
+        "estimated_lat": round(new_lat, 4),
+        "estimated_lon": round(new_lon, 4)
+    }

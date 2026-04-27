@@ -196,7 +196,7 @@ footer { visibility:hidden; }
 .status-bar {
   position:fixed; bottom:0; left:0; right:0; z-index:998;
   background:rgba(5,10,20,0.97); border-top:1px solid rgba(96,165,250,0.08);
-  padding:5px 20px 5px 280px; display:flex; align-items:center; gap:14px;
+  padding: 5px 20px; margin-left: 0; display:flex; align-items:center; gap:14px;
   font-size:11px; color:#475569; backdrop-filter:blur(12px);
 }
 .status-divider { color:#1e293b; }
@@ -262,5 +262,148 @@ div[data-testid="stMetric"] {
 }
 div[data-testid="stMetricValue"] { color:#fff !important; font-weight:700 !important; }
 div[data-testid="stMetricLabel"] { color:#64748b !important; font-size:10px !important; text-transform:uppercase; letter-spacing:0.6px; }
+
+/* ── Onboarding welcome card ── */
+.welcome-card {
+  background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(68,197,255,0.08));
+  border: 1px solid rgba(255,107,53,0.3);
+  border-radius: 16px; padding: 24px 28px; margin: 0 0 20px;
+  display: flex; align-items: center; gap: 20px;
+}
+.welcome-title { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+.welcome-sub   { font-size: 13px; color: #94a3b8; line-height: 1.6; }
+
+/* ── Mode color tabs ── */
+.mode-tab-sea  { border-color: #44c5ff !important; }
+.mode-tab-rail { border-color: #fbbf24 !important; }
+.mode-tab-road { border-color: #4ade80 !important; }
+.mode-tab-air  { border-color: #a78bfa !important; }
+
+/* ── Animated counter ── */
+.counter-value {
+  font-size: 36px; font-weight: 800; font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, #f87171, #fbbf24);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+}
+
+/* ── Simulation event card ── */
+.sim-event-card {
+  background: linear-gradient(135deg, rgba(248,113,113,0.08), rgba(251,191,36,0.05));
+  border: 1px solid rgba(248,113,113,0.25);
+  border-radius: 14px; padding: 18px; margin: 10px 0;
+}
+
+/* ── Timeline step ── */
+.timeline-step {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.timeline-step:last-child { border-bottom: none; }
+.timeline-dot {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+}
+.dot-done    { background: rgba(74,222,128,0.2);  color: #4ade80; }
+.dot-active  { background: rgba(255,107,53,0.2);  color: #FF6B35;
+               animation: pulse 1.2s ease-in-out infinite; }
+.dot-pending { background: rgba(255,255,255,0.04); color: #475569; }
+.timeline-content { flex: 1; }
+.timeline-label { font-size: 13px; font-weight: 600; color: #e7efff; }
+.timeline-detail { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+/* ── HaaS phone mockup ── */
+.phone-frame {
+  width: 280px; background: #060d1a;
+  border-radius: 38px; padding: 16px 14px;
+  border: 2.5px solid rgba(96,165,250,0.2);
+  box-shadow: 0 0 60px rgba(68,197,255,0.06), inset 0 0 30px rgba(0,0,0,0.3);
+  margin: 0 auto;
+}
+.phone-notch {
+  width: 90px; height: 8px; background: #0d1f3c;
+  border-radius: 4px; margin: 0 auto 14px;
+}
+.phone-screen {
+  background: #0a1628; border-radius: 20px; overflow: hidden;
+  min-height: 480px; padding: 0;
+}
+.phone-header {
+  background: linear-gradient(135deg, #FF6B35, #ff8c5a);
+  padding: 12px 14px;
+}
+.phone-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.phone-btn {
+  background: #FF6B35; color: white; border-radius: 10px;
+  padding: 10px; text-align: center; font-size: 12px;
+  font-weight: 700; margin: 8px 12px;
+}
+
+/* ── Risk speedometer ── */
+.risk-ring {
+  width: 80px; height: 80px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 800;
+  border: 4px solid;
+}
+.ring-critical { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.1); }
+.ring-high     { border-color: #fbbf24; color: #fbbf24; background: rgba(251,191,36,0.1); }
+.ring-medium   { border-color: #60a5fa; color: #60a5fa; background: rgba(96,165,250,0.1); }
+.ring-low      { border-color: #4ade80; color: #4ade80; background: rgba(74,222,128,0.1); }
+
+/* ── Notification dot ── */
+.notif-badge {
+  position: absolute; top: -4px; right: -4px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #f87171; border: 2px solid #070d18;
+  font-size: 9px; color: white; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── SLA breach bar ── */
+.sla-bar-track {
+  background: #0f172a; border-radius: 6px; height: 12px;
+  overflow: hidden; position: relative; margin: 6px 0;
+}
+.sla-bar-fill {
+  height: 12px; border-radius: 6px;
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── Sell-able feature badges ── */
+.enterprise-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3);
+  color: #a78bfa; border-radius: 20px; padding: 4px 12px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+}
+
+/* ── CO2 bar (horizontal) ── */
+.co2-row { display:flex; align-items:center; gap:10px; margin:6px 0; }
+.co2-label { font-size:11px; color:#94a3b8; width:36px; flex-shrink:0; }
+.co2-track { flex:1; background:#0f172a; border-radius:3px; height:10px; overflow:hidden; }
+.co2-fill  { height:10px; border-radius:3px; }
+.co2-value { font-size:11px; color:#e7efff; width:50px; text-align:right; }
+
+/* ── Gemma edge badge ── */
+.gemma-badge {
+  background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 8px; padding: 8px 12px; font-size: 11px; color: #4ade80;
+  display: flex; align-items: center; gap: 8px; margin: 6px 0;
+}
+
+/* ── Disaster relief mode ── */
+.relief-mode {
+  background: linear-gradient(135deg, rgba(96,165,250,0.08), rgba(167,139,250,0.05));
+  border: 1px solid rgba(96,165,250,0.25);
+  border-radius: 12px; padding: 14px;
+}
+
+/* ── Smooth transitions ── */
+.stApp * { transition: color 0.2s, background-color 0.2s; }
 </style>
 """, unsafe_allow_html=True)

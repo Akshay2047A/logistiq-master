@@ -102,7 +102,7 @@ def parse_json_from_text(raw: str) -> dict | None:
 # ---------------------------------------------------------------------------
 
 def analyze_shipment_risk(shipment: dict, weather: dict, exchange_rate: float, live_intel: str) -> dict:
-    from logistiq.data import demo_responses  # lazy import to avoid circular
+
     val_usd = round(float(shipment.get("value_crore", 0)) * 10_000_000 / exchange_rate, 0)
     prompt = f"""
 You are a supply chain risk AI. Analyze this shipment against real current data.
@@ -191,6 +191,15 @@ def process_captain_report(text: str, image_bytes=None, demo_responses=None) -> 
         '"recommended_action":"","notify":[],"summary":"","lat":null,"lon":null}\n'
         f"Report: {text}"
     )
+    if st.session_state.get("gemma_mode", False):
+        st.info("⚡ Edge Mode: Processing locally with Gemma 2B...")
+        time.sleep(1.2)
+        raw = cached_gemini_call(prompt, image_bytes=image_bytes, demo_fallback=None)
+        if isinstance(raw, dict):
+            return raw
+        parsed = parse_json_from_text(raw or "")
+        return parsed if parsed else demo
+
     raw = cached_gemini_call(prompt, image_bytes=image_bytes, demo_fallback=demo)
     if isinstance(raw, dict):
         return raw

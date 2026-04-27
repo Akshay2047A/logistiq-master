@@ -34,7 +34,7 @@ def init_session_state():
         "cyclone_triggered":  False,
         "reroute_data":       None,
         "reroute_accepted":   False,
-        "active_page":        "Overview",
+        "active_page":        "overview",
         "captain_reports":    [],
         "demo_mode":          False,
         "shipments":          [],
