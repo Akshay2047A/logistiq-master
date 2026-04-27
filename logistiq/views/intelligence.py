@@ -71,6 +71,11 @@ def render():
         rate = get_live_exchange_rate()
         fx_hist = get_fx_history_mock()
 
+        last_updated_mins = int((time.time() - st.session_state.get("_fx_ts", time.time())) / 60)
+        st.caption(f"Last updated {last_updated_mins} min ago")
+        if last_updated_mins > 60:
+            st.markdown("<div class='badge' style='background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid #fbbf2455;margin-bottom:10px'>⚠ Stale FX data</div>", unsafe_allow_html=True)
+
         col_a, col_b = st.columns(2)
         col_a.metric("USD/INR", f"₹{rate:.2f}", f"{rate - fx_hist[0]:+.2f} (7d)")
         col_b.metric("EUR/INR", f"₹{rate * 1.085:.2f}", "")

@@ -3,6 +3,7 @@
 import time
 import streamlit as st
 import plotly.graph_objects as go
+from streamlit_autorefresh import st_autorefresh
 
 from logistiq.data import vessels_data, ports_data, trucks_data, rail_schedules_data, demo_responses
 from logistiq.components import charts as C, maps as M, cards as K
@@ -77,6 +78,18 @@ FINANCIAL_TABLE = {
 
 
 def render():
+    if "sim_step" not in st.session_state:
+        st.session_state.sim_step = 0
+    if "sim_t0" not in st.session_state:
+        st.session_state.sim_t0 = time.time()
+        
+    elapsed = time.time() - st.session_state.sim_t0
+    MAX_STEPS = 5
+    st.session_state.sim_step = min(int(elapsed / 1.5), MAX_STEPS)
+    
+    if st.session_state.get("sim_stage", 0) in (1, 2) and elapsed < 8.0:
+        st_autorefresh(interval=1500, key="sim_step_refresh")
+
     st.markdown("### 🧪 Simulation Engine")
     st.caption("Interactive scenario modeling — powered by Gemini 1.5 Pro + real logistics data")
 
@@ -144,6 +157,8 @@ def render():
     with main_col:
         if run_btn and st.session_state.sim_stage == 0:
             st.session_state.sim_stage = 1
+            st.session_state.sim_t0 = time.time()
+            st.session_state.sim_step = 0
             st.session_state.cyclone_triggered = True
             st.session_state.sim_reject_mode = False
             st.rerun()
@@ -185,49 +200,43 @@ def render():
             M.render_map(fmap, height=320)
 
             # Animated Financial Counter
-            exposure_placeholder = st.empty()
-            for val in range(0, cargo_val * 10 + 1, max(1, cargo_val * 10 // 20)):
-                v = val / 10.0
-                color = "#4ade80" if v < cargo_val*0.3 else "#fbbf24" if v < cargo_val*0.7 else "#f87171"
-                exposure_placeholder.markdown(
-                    f"<div style='font-size:36px;color:{color};font-weight:800;text-align:center;margin:10px 0;font-variant-numeric:tabular-nums'>₹{v:.1f} Cr AT RISK</div>",
-                    unsafe_allow_html=True
-                )
-                time.sleep(0.04)
-            exposure_placeholder.markdown(
-                f"<div style='font-size:36px;color:#f87171;font-weight:800;text-align:center;margin:10px 0;font-variant-numeric:tabular-nums'>₹{cargo_val:.1f} Cr AT RISK</div>",
+            progress = min(1.0, elapsed / 2.0)
+            v = cargo_val * progress
+            color = "#4ade80" if v < cargo_val*0.3 else "#fbbf24" if v < cargo_val*0.7 else "#f87171"
+            st.markdown(
+                f"<div style='font-size:36px;color:{color};font-weight:800;text-align:center;margin:10px 0;font-variant-numeric:tabular-nums'>₹{v:.1f} Cr AT RISK</div>",
                 unsafe_allow_html=True
             )
 
             # Cascade Impact Visual
             st.markdown("#### Cascade Impact")
-            impact_ph = st.empty()
             impacts = [
                 "🚢 MV Chennai Star — AFFECTED ⚠",
                 "🏭 Maruti Manesar — Assembly line at risk",
                 "🚂 SCR Train 58501 — Awaiting cargo",
                 "🚛 3 trucks — Idle at Chennai Port"
             ]
-            for i in range(1, 5):
-                html = ""
-                for j, imp in enumerate(impacts):
-                    if j < i:
-                        html += f"<div style='color:#f87171;padding:6px 12px;background:rgba(248,113,113,0.1);margin-bottom:4px;border-radius:6px;font-size:13px;font-weight:600'>❌ {imp}</div>"
-                    else:
-                        html += f"<div style='color:#94a3b8;padding:6px 12px;margin-bottom:4px;font-size:13px'>⏳ {imp}</div>"
-                impact_ph.markdown(html, unsafe_allow_html=True)
-                time.sleep(0.3)
+            visible_impacts = min(4, max(0, int(elapsed / 0.8)))
+            html = ""
+            for j, imp in enumerate(impacts):
+                if j < visible_impacts:
+                    html += f"<div style='color:#f87171;padding:6px 12px;background:rgba(248,113,113,0.1);margin-bottom:4px;border-radius:6px;font-size:13px;font-weight:600'>❌ {imp}</div>"
+                else:
+                    html += f"<div style='color:#94a3b8;padding:6px 12px;margin-bottom:4px;font-size:13px'>⏳ {imp}</div>"
+            st.markdown(html, unsafe_allow_html=True)
 
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🤖 Get AI Reroute Plan", type="primary", use_container_width=True, key="stage1_next"):
-                st.session_state.sim_stage = 2
-                st.rerun()
+            if elapsed >= 3.0:
+                if st.button("🤖 Get AI Reroute Plan", type="primary", use_container_width=True, key="stage1_next"):
+                    st.session_state.sim_stage = 2
+                    st.session_state.sim_t0 = time.time()
+                    st.session_state.sim_step = 0
+                    st.rerun()
 
         # STAGE 2: AI plan + results
         elif stage == 2:
             if not st.session_state.reroute_data and not st.session_state.get("sim_reject_mode", False):
                 # Animate thinking
-                think_ph = st.empty()
                 steps = [
                     ("🔍", "Gemini searching Google for live port conditions..."),
                     ("🌊", "Checking tidal charts for Visakhapatnam..."),
@@ -235,21 +244,22 @@ def render():
                     ("💰", "Calculating financial impact..."),
                     ("✅", "Cascade reroute plan ready")
                 ]
+                visible_steps = min(5, int(elapsed / 0.8) + 1)
                 html_accum = ""
-                for icon, text in steps:
+                for icon, text in steps[:visible_steps]:
                     html_accum += f"<div style='padding:8px;font-size:13px;color:#e7efff'><b>{icon}</b> {text}</div>"
-                    think_ph.markdown(f"<div class='glass-card'>{html_accum}</div>", unsafe_allow_html=True)
-                    time.sleep(0.4)
+                st.markdown(f"<div class='glass-card'>{html_accum}</div>", unsafe_allow_html=True)
                 
-                st.session_state.reroute_data = get_ai_reroute(
-                    vessels_data, ports_data, rail_schedules_data, trucks_data, demo_responses
-                )
-                think_ph.empty()
-                st.rerun()
+                if visible_steps >= 5:
+                    st.session_state.reroute_data = get_ai_reroute(
+                        vessels_data, ports_data, rail_schedules_data, trucks_data, demo_responses
+                    )
+                    st.session_state.sim_t0 = time.time()
+                    st.session_state.sim_step = 0
+                    st.rerun()
 
             if st.session_state.get("sim_reject_mode", False):
                 st.markdown("<h3 style='color:#f87171'>Consequences of Rejection</h3>", unsafe_allow_html=True)
-                cost_ph = st.empty()
                 msgs = [
                     ("T+0: Decision to reject reroute", 0),
                     ("T+6h: Demurrage charges begin: ₹18L/day", 0.18),
@@ -257,22 +267,25 @@ def render():
                     ("T+48h: Assembly line SHUTDOWN", 2.4),
                     ("T+96h: Contractual penalties applied", 8.5)
                 ]
-                total = 0
-                for msg, cost in msgs:
-                    total += cost
-                    cost_ph.markdown(
-                        f"<div style='text-align:center;color:#f87171;font-size:28px;font-weight:700;background:rgba(248,113,113,0.1);padding:20px;border-radius:12px'>"
-                        f"⚠ {msg}<br><br>Loss: ₹{total:.2f} Cr</div>",
-                        unsafe_allow_html=True
-                    )
-                    time.sleep(1.0)
+                visible_msgs = min(5, max(1, int(elapsed / 1.0) + 1))
+                total = sum(cost for msg, cost in msgs[:visible_msgs])
+                latest_msg = msgs[visible_msgs-1][0]
+                
+                st.markdown(
+                    f"<div style='text-align:center;color:#f87171;font-size:28px;font-weight:700;background:rgba(248,113,113,0.1);padding:20px;border-radius:12px'>"
+                    f"⚠ {latest_msg}<br><br>Loss: ₹{total:.2f} Cr</div>",
+                    unsafe_allow_html=True
+                )
                 
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("🤖 It's not too late — Accept the reroute?", type="primary", use_container_width=True):
-                    st.session_state.sim_reject_mode = False
-                    st.session_state.reroute_accepted = True
-                    st.session_state.sim_stage = 3
-                    st.rerun()
+                if elapsed >= 5.0:
+                    if st.button("🤖 It's not too late — Accept the reroute?", type="primary", use_container_width=True):
+                        st.session_state.sim_reject_mode = False
+                        st.session_state.reroute_accepted = True
+                        st.session_state.sim_stage = 3
+                        st.session_state.sim_t0 = time.time()
+                        st.session_state.sim_step = 0
+                        st.rerun()
 
             else:
                 data = st.session_state.reroute_data
@@ -328,6 +341,8 @@ def render():
                 st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
                 if st.button("❌ REJECT — Show Consequences", use_container_width=True):
                     st.session_state.sim_reject_mode = True
+                    st.session_state.sim_t0 = time.time()
+                    st.session_state.sim_step = 0
                     st.rerun()
 
         # STAGE 3: Reroute accepted — animated map

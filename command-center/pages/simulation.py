@@ -111,6 +111,8 @@ def render(vessels, ports, trucks, rail, demo_responses):
         sim_state = st.session_state.get("sim_complete", False)
 
         if run_btn:
+            st.session_state.sim_t0 = time.time()
+            st.session_state.sim_step = 0
             _run_simulation(scenario_key, scenario, vessels, ports, trucks, rail, demo_responses, main_col)
 
         elif sim_state and st.session_state.get("reroute_data"):
@@ -125,39 +127,43 @@ def render(vessels, ports, trucks, rail, demo_responses):
 
 def _run_simulation(scenario_key, scenario, vessels, ports, trucks, rail, demo_responses, container):
     """Animated simulation sequence."""
-
-    # T+0: Trigger event
-    progress = st.progress(0, text="Initializing simulation...")
-    time.sleep(0.5)
-
-    # T+1: Show event on map
-    progress.progress(15, text="🌀 Event detected — updating threat map...")
-    st.session_state.cyclone_triggered = True
-    time.sleep(1)
-
-    # T+2: Update risk badges
-    progress.progress(30, text="⚠ Assessing vessel risk exposure...")
-    time.sleep(1)
-
-    # T+3: Financial exposure counter
-    progress.progress(45, text="💰 Calculating financial exposure...")
-    time.sleep(0.8)
-
-    # T+4: Run AI reroute
-    progress.progress(60, text="🤖 Running AI Cascade Reroute Engine (Gemini 1.5 Pro)...")
-    reroute = get_ai_reroute(vessels, ports, rail, trucks, demo_responses)
-    st.session_state.reroute_data = reroute
-    time.sleep(0.5)
-
-    # T+5: Generate cascade steps
-    progress.progress(80, text="✅ Building cascade response plan...")
-    time.sleep(0.5)
-
-    progress.progress(100, text="✅ Simulation complete — results ready")
-    time.sleep(0.3)
-
-    st.session_state.sim_complete = True
-    st.rerun()
+    if "sim_step" not in st.session_state:
+        st.session_state.sim_step = 0
+    if "sim_t0" not in st.session_state:
+        st.session_state.sim_t0 = time.time()
+        
+    elapsed = time.time() - st.session_state.sim_t0
+    MAX_STEPS = 5
+    st.session_state.sim_step = min(int(elapsed / 1.0), MAX_STEPS)
+    
+    if st.session_state.sim_step < MAX_STEPS:
+        from streamlit_autorefresh import st_autorefresh
+        st_autorefresh(interval=1000, key="sim_run_refresh")
+        
+    step = st.session_state.sim_step
+    
+    texts = [
+        "Initializing simulation...",
+        "🌀 Event detected — updating threat map...",
+        "⚠ Assessing vessel risk exposure...",
+        "💰 Calculating financial exposure...",
+        "🤖 Running AI Cascade Reroute Engine (Gemini 1.5 Pro)...",
+        "✅ Building cascade response plan..."
+    ]
+    progs = [0, 15, 30, 45, 60, 80, 100]
+    
+    idx = min(step, len(texts)-1)
+    progress = st.progress(progs[idx], text=texts[idx])
+    
+    if step >= 1: 
+        st.session_state.cyclone_triggered = True
+    if step >= 4 and not st.session_state.get("reroute_data"):
+        st.session_state.reroute_data = get_ai_reroute(vessels, ports, rail, trucks, demo_responses)
+        
+    if step >= MAX_STEPS:
+        progress.progress(100, text="✅ Simulation complete — results ready")
+        st.session_state.sim_complete = True
+        st.rerun()
 
 
 def _render_results(scenario, vessels, ports, trucks, rail, demo_responses):

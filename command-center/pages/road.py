@@ -64,8 +64,6 @@ def render(trucks, ports):
     )
 
     if st.button("🤖 Emergency Cold Chain Reroute", use_container_width=True, key="cold_reroute"):
-        with st.spinner("Finding nearest cold storage..."):
-            time.sleep(1.5)
         st.success("Rerouted to Nellore Cold Storage (NH16, 62km). ETA 1.8hrs. 12 farmers protected.")
 
     # Checkpoint
@@ -81,6 +79,4 @@ def render(trucks, ports):
     )
 
     if st.button("🤖 Match Empty Trucks to Outbound Cargo", use_container_width=True, key="match_trucks"):
-        with st.spinner("Matching..."):
-            time.sleep(1.5)
         st.success("TRK-CHN-509 matched with Delhivery outbound (14.2t electronics). Saves 340 deadhead km.")

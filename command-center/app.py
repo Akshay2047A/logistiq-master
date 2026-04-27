@@ -365,10 +365,20 @@ def render_sidebar():
         )
 
         # Firebase status
-        from utils.firebase import check_firebase_connection
+        from utils.firebase import check_firebase_connection, firebase_flush_queue
         fb_ok = st.session_state.get("firebase_ok", False)
         fb_color = "🟢" if fb_ok else "🔴"
         st.caption(f"{fb_color} Firebase {'Connected' if fb_ok else 'Offline'}")
+
+        # Sync Status
+        queue = st.session_state.get("firebase_queue", [])
+        if queue:
+            st.markdown(f"<div style='color:#fbbf24;font-size:12px;margin-bottom:4px'>⚠ {len(queue)} items pending sync</div>", unsafe_allow_html=True)
+            if st.button("Retry Sync", key="retry_sync", use_container_width=True):
+                firebase_flush_queue()
+                st.rerun()
+        else:
+            st.markdown("<div style='color:#4ade80;font-size:12px;margin-bottom:4px'>✅ All synced</div>", unsafe_allow_html=True)
 
         st.divider()
 
@@ -430,7 +440,11 @@ def render_status_bar():
     wth_ok = bool(os.getenv("WEATHER_API_KEY", ""))
     
     fb_icon = "🟢 Firebase" if fb_ok else "🔴 Firebase"
-    gem_icon = "🟢 Gemini" if gem_ok else "🔴 Gemini"
+    
+    gem_status = st.session_state.get("gemini_status", "ok") if gem_ok else "failed"
+    gem_dot = "🟢" if gem_status == "ok" else "🟡" if gem_status == "retrying" else "🔴"
+    gem_icon = f"{gem_dot} Gemini ({gem_status})"
+    
     wth_icon = "🟢 WeatherAPI" if wth_ok else "🔴 WeatherAPI"
     
     st.markdown(

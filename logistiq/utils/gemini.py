@@ -6,9 +6,11 @@ import os
 import base64
 
 import streamlit as st
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 try:
     import google.generativeai as genai
+    import google.api_core.exceptions
 except Exception:  # noqa: BLE001
     genai = None
 
@@ -39,6 +41,19 @@ def get_gemini_model():
 # ---------------------------------------------------------------------------
 # Core call wrapper
 # ---------------------------------------------------------------------------
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    reraise=False,
+)
+def _call_with_retry(model, parts, tools, gen_cfg):
+    try:
+        return model.generate_content(parts, tools=tools, generation_config=gen_cfg)
+    except Exception as e:
+        if "google.api_core.exceptions" in str(type(e)) and "ResourceExhausted" in str(type(e)):
+            st.session_state.gemini_status = "retrying"
+        raise
 
 def cached_gemini_call(
     prompt_text: str,
@@ -73,10 +88,19 @@ def cached_gemini_call(
                 }
             )
         gen_cfg = {"response_mime_type": response_mime_type} if response_mime_type else None
-        response = model.generate_content(parts, tools=tools, generation_config=gen_cfg)
+        
+        st.session_state.gemini_status = "ok"
+        response = _call_with_retry(model, parts, tools, gen_cfg)
+        
+        if isinstance(response, Exception) or response is None:
+            st.session_state.gemini_status = "failed"
+            return demo_fallback
+            
         text = getattr(response, "text", None)
+        st.session_state.gemini_status = "ok"
         return text.strip() if text else demo_fallback
     except Exception:  # noqa: BLE001
+        st.session_state.gemini_status = "failed"
         return demo_fallback
 
 
@@ -185,10 +209,12 @@ def get_ai_reroute(vessels, ports, rail, trucks, demo_responses) -> dict:
 def process_captain_report(text: str, image_bytes=None, demo_responses=None) -> dict:
     demo = (demo_responses or {}).get("captain_report", {})
     prompt = (
-        'Extract logistics data. Return ONLY valid JSON: '
+        'Extract logistics and vision data. Return ONLY valid JSON: '
         '{"reporter_type":"","asset_id":"","delay_hours":0,"cargo_status":"intact",'
         '"location":"","weather_conditions":"","urgency":"low","action_required":false,'
-        '"recommended_action":"","notify":[],"summary":"","lat":null,"lon":null}\n'
+        '"recommended_action":"","notify":[],"summary":"","lat":null,"lon":null,'
+        '"container_number":"","damage_detected":false,"damage_description":"",'
+        '"safety_violations":[],"cargo_condition":""}\n'
         f"Report: {text}"
     )
     if st.session_state.get("gemma_mode", False):

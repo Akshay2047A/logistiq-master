@@ -2,7 +2,7 @@
 """Map rendering functions using Folium."""
 import folium
 from streamlit_folium import st_folium
-from folium.plugins import AntPath
+from folium.plugins import AntPath, HeatMap
 import streamlit as st
 
 
@@ -55,14 +55,29 @@ SHIP_SVG = (
 
 def add_vessels(fmap: folium.Map, vessels: list, at_risk_ids: set | None = None):
     at_risk_ids = at_risk_ids or set()
+    from logistiq.utils.data import CITY_COORDS
+    port_coords = {
+        "PRT-VSK": CITY_COORDS.get("vizag", (17.6868, 83.2185)),
+        "PRT-CHN": CITY_COORDS.get("chennai", (13.0827, 80.2707)),
+    }
+    
     for v in vessels:
         is_risk = v.get("id") in at_risk_ids
         color = "#ff5a83" if is_risk else "#44c5ff"
         pulse = "animation:pulse 1s infinite;" if is_risk else ""
         svg = SHIP_SVG.format(color=color)
+        
+        if v.get("status") == "At Sea":
+            orig = port_coords.get(v.get("origin_port_id"))
+            if orig:
+                AntPath(
+                    locations=[orig, [v["lat"], v["lon"]]], 
+                    color=color, weight=2, dash_array=[10, 20]
+                ).add_to(fmap)
+                
         folium.Marker(
             [v["lat"], v["lon"]],
-            tooltip=v["name"],
+            tooltip=f"{v['name']} | {v.get('speed_knots', 'N/A')} kn",
             popup=(
                 f"<b>{v['name']}</b><br>Status: {v.get('status','N/A')}<br>"
                 f"Cargo: {v.get('cargo_type','N/A')}<br>"
@@ -99,17 +114,14 @@ def add_trucks(fmap: folium.Map, trucks: list):
 # ---------------------------------------------------------------------------
 
 def add_cyclone(fmap: folium.Map, lat: float = 14.8, lon: float = 85.6, radius_km: int = 320):
-    folium.Circle(
-        location=[lat, lon],
-        radius=radius_km * 1000,
-        color="#ff5a83",
-        fill=True,
-        fill_opacity=0.12,
-        dash_array="8,6",
-    ).add_to(fmap)
+    radii = [150, 250, 350]  # km
+    opacities = [0.25, 0.15, 0.08]
+    for r, op in zip(radii, opacities):
+        folium.Circle([lat, lon], radius=r*1000, color="#ff5a83",
+            fill=True, fill_opacity=op, weight=1).add_to(fmap)
     folium.Marker(
         [lat, lon],
-        icon=folium.DivIcon(html="<div style='font-size:16px;color:#ff5a83'>🌀 Cat.3 Cyclone</div>"),
+        icon=folium.DivIcon(html="<div style='font-size:14px;color:#ff5a83;white-space:nowrap;transform:translate(-50%,-100%);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;'>🌀 Cat.3 — 180kph</div>"),
     ).add_to(fmap)
 
 
@@ -184,6 +196,70 @@ def make_world_chokepoint_map(intel: dict) -> folium.Map:
             tooltip=f"{cp['name']} — {risk}",
         ).add_to(fmap)
     return fmap
+
+
+def add_risk_heatmap(fmap: folium.Map, shipments: list, intel_data: dict):
+    from folium.plugins import HeatMap
+    from logistiq.utils.data import resolve_city_coords
+    points = []
+    
+    # Vessel / Shipment positions
+    for s in shipments:
+        lat = s.get("lat")
+        lon = s.get("lon")
+        if lat is None or lon is None:
+            lat, lon = resolve_city_coords(s.get("origin", ""))
+        
+        score = (s.get("risk_data") or {}).get("risk_score", 0)
+        # Fallback logic if passed vessels directly
+        if score == 0 and "status" in s:
+            score = 80 if s.get("id") in st.session_state.get("at_risk_vessels", []) else 20
+            
+        if lat is not None and lon is not None:
+            points.append([lat, lon, score / 100.0])
+            
+    # Chokepoints
+    for zone, data in intel_data.items():
+        risk = data.get("risk", "Low")
+        if risk in ["High", "Critical"]:
+            for cp in CHOKEPOINTS:
+                if cp["key"] == zone:
+                    weight = 1.0 if risk == "Critical" else 0.8
+                    points.append([cp["lat"], cp["lon"], weight])
+                    
+    HeatMap(points, radius=35, blur=20, max_zoom=6, name="Risk Heatmap").add_to(fmap)
+    folium.LayerControl().add_to(fmap)
+
+
+def add_shipment_route(fmap: folium.Map, shipment: dict):
+    from logistiq.utils.data import resolve_city_coords
+    orig = resolve_city_coords(shipment.get("origin", ""))
+    dest_port = resolve_city_coords("Visakhapatnam" if shipment.get("vessel_name") else shipment.get("destination", ""))
+    rail_yard = resolve_city_coords("Secunderabad")
+    final_dest = resolve_city_coords(shipment.get("destination", ""))
+    
+    # 1. Sea leg: blue dashed PolyLine
+    folium.PolyLine([orig, dest_port], color="#44c5ff", weight=3, dash_array="5,10").add_to(fmap)
+    # 2. Rail leg: yellow solid PolyLine
+    folium.PolyLine([dest_port, rail_yard], color="#fbbf24", weight=3).add_to(fmap)
+    # 3. Road leg: green solid PolyLine
+    folium.PolyLine([rail_yard, final_dest], color="#4ade80", weight=3).add_to(fmap)
+    
+    # 4. Handoff points
+    handoffs = [
+        (dest_port, "Port (Handoff to Rail)", "ETA: 48hrs"),
+        (rail_yard, "Rail Yard (Handoff to Truck)", "ETA: 72hrs"),
+        (final_dest, "Final Delivery", "ETA: 96hrs")
+    ]
+    for coords, name, eta in handoffs:
+        folium.CircleMarker(
+            location=coords,
+            radius=10,
+            color="#ffffff",
+            fill=True,
+            fill_opacity=0.8,
+            popup=f"<b>{name}</b><br>{eta}"
+        ).add_to(fmap)
 
 
 def render_map(fmap: folium.Map, height: int = 520):

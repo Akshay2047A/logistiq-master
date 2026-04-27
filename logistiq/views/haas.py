@@ -244,6 +244,9 @@ def render():
                 with st.spinner("🤖 Extracting structured data…"):
                     parsed = process_captain_report(report_text, img_bytes, demo_responses)
                 
+                if parsed.get("damage_detected", False):
+                    parsed["urgency"] = "critical"
+                    
                 parsed["timestamp"] = datetime.now().strftime("%H:%M IST")
                 parsed["reporter_type"] = reporter_type
                 parsed["raw_text"] = original_text
@@ -271,11 +274,14 @@ def render():
   <div style='display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px'>
     <div style='color:#94a3b8'>Asset ID</div><div style='color:#e7efff'><b>{last.get('asset_id','')}</b></div>
     <div style='color:#94a3b8'>Delay</div><div style='color:#fbbf24'><b>{last.get('delay_hours',0)} hrs</b></div>
-    <div style='color:#94a3b8'>Cargo</div><div style='color:#4ade80'><b>{last.get('cargo_status','')}</b></div>
+    <div style='color:#94a3b8'>Cargo Cond.</div><div style='color:#4ade80'><b>{last.get('cargo_condition','') or last.get('cargo_status','')}</b></div>
     <div style='color:#94a3b8'>Urgency</div><div style='color:#f87171'><b>{last.get('urgency','').upper()}</b></div>
+    <div style='color:#94a3b8'>Container #</div><div style='color:#e7efff'><b>{last.get('container_number','N/A')}</b></div>
+    <div style='color:#94a3b8'>Damage</div><div style='color:#f87171'><b>{"YES: " + last.get('damage_description','') if last.get('damage_detected') else "None"}</b></div>
   </div>
   <div style='margin-top:10px;font-size:12px;color:#60a5fa'>
     💡 {last.get('recommended_action','')}
   </div>
   {gemma_badge}
 </div>""", unsafe_allow_html=True)
+

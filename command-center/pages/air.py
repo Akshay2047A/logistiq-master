@@ -75,10 +75,8 @@ def render():
     st.caption("Upload airway bill, invoice, or packing list. Gemini checks compliance.")
     uploaded = st.file_uploader("Upload document", type=["pdf", "jpg", "png", "jpeg"], key="customs_doc")
     if uploaded and st.button("🤖 Verify with Gemini", use_container_width=True, key="verify_customs"):
-        with st.spinner("Gemini Vision analyzing..."):
-            if uploaded.type.startswith("image"):
-                _ = Image.open(BytesIO(uploaded.read()))
-            time.sleep(2)
+        if uploaded.type.startswith("image"):
+            _ = Image.open(BytesIO(uploaded.read()))
         st.markdown(
             """
             <div class='glass-card' style='border-color:#4ade80'>

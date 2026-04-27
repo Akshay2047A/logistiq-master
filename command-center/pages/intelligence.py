@@ -39,6 +39,13 @@ def render(ports):
     with top_right:
         st.markdown("#### 💱 Live Exchange Rates")
         rates = get_live_exchange_rate()
+        
+        import time
+        last_updated_mins = int((time.time() - rates.get("_ts", time.time())) / 60)
+        st.caption(f"Last updated {last_updated_mins} min ago")
+        if last_updated_mins > 60:
+            st.markdown("<div class='badge' style='background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid #fbbf2455;margin-bottom:10px'>⚠ Stale FX data</div>", unsafe_allow_html=True)
+            
         exchange_rate_display(rates)
 
         # Impact calculator

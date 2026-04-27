@@ -203,11 +203,29 @@ def render_shipment_list():
         K.empty_state("📦", "No shipments", "Add one via '+ Add Shipment'")
         return
 
+    st.markdown("""
+        <script>
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                const inputs = window.parent.document.querySelectorAll('input');
+                for (let input of inputs) {
+                    if (input.placeholder && input.placeholder.includes('Search')) {
+                        input.focus();
+                        break;
+                    }
+                }
+            }
+        });
+        </script>
+    """, unsafe_allow_html=True)
+    
     count = 0
     for idx, s in enumerate(shipments):
-        match = (query in s.get("id", "").lower() or 
-                 query in s.get("origin", "").lower() or 
-                 query in s.get("destination", "").lower())
+        match = any(query in field.lower() for field in [
+            s.get("id", ""), s.get("origin", ""), s.get("destination", ""),
+            s.get("cargo_type", ""), s.get("cargo_desc", "")
+        ])
         if query and not match:
             continue
             

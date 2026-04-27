@@ -120,7 +120,11 @@ footer { visibility:hidden; }
   background: rgba(255,255,255,0.02); cursor:pointer;
   transition: background 0.2s;
 }
-.shipment-list-card:hover { background: rgba(255,107,53,0.06); }
+.shipment-list-card:hover { 
+  background: rgba(255,107,53,0.08) !important; 
+  border-left-color: #FF6B35 !important;
+  cursor: pointer;
+}
 .card-title { font-size: 11px; font-weight: 600; color: #e7efff; }
 .card-sub   { font-size: 10px; color: #475569; }
 

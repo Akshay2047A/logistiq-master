@@ -7,9 +7,11 @@ import os
 import time
 
 import streamlit as st
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 try:
     import google.generativeai as genai
+    import google.api_core.exceptions
 except Exception:  # noqa: BLE001
     genai = None
 
@@ -45,6 +47,24 @@ def _ensure_model():
 # Core call wrapper
 # ---------------------------------------------------------------------------
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    reraise=False,
+)
+def _call_with_retry(model, parts, tools, gen_cfg, timeout):
+    try:
+        return model.generate_content(
+            parts,
+            tools=tools,
+            generation_config=gen_cfg,
+            request_options={"timeout": timeout},
+        )
+    except Exception as e:
+        if "google.api_core.exceptions" in str(type(e)) and "ResourceExhausted" in str(type(e)):
+            st.session_state.gemini_status = "retrying"
+        raise
+
 def cached_gemini_call(
     prompt_text: str,
     image_bytes: bytes | None = None,
@@ -79,15 +99,19 @@ def cached_gemini_call(
                 }
             })
         generation_config = {"response_mime_type": response_mime_type} if response_mime_type else None
-        response = model.generate_content(
-            parts,
-            tools=tools,
-            generation_config=generation_config,
-            request_options={"timeout": timeout},
-        )
+        
+        st.session_state.gemini_status = "ok"
+        response = _call_with_retry(model, parts, tools, generation_config, timeout)
+        
+        if isinstance(response, Exception) or response is None:
+            st.session_state.gemini_status = "failed"
+            return demo_fallback
+            
         text = getattr(response, "text", None)
+        st.session_state.gemini_status = "ok"
         return text.strip() if text else demo_fallback
     except Exception:  # noqa: BLE001
+        st.session_state.gemini_status = "failed"
         return demo_fallback
 
 

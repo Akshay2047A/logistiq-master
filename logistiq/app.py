@@ -148,13 +148,18 @@ with st.sidebar:
         if not cmd: return
         try:
             from logistiq.utils.gemini import cached_gemini_call
-            prompt = f'User command: "{cmd}"\nParse this into JSON format: {{"action": "...", "target": "...", "message": "..."}}\nActions: "navigate" (target: overview, sea, rail, road, air, intelligence, simulation, haas, journey), "toggle" (target: demo_mode, gemma_mode, relief_mode), "other" (target: None). Message is a short toast notification to show the user. Return ONLY valid JSON without markdown formatting.'
+            from logistiq.utils.gemini import cached_gemini_call
+            prompt = f"""You are a logistics ops assistant. The user typed: "{cmd}"
+Available actions: navigate_to_page, filter_shipments, trigger_reroute, show_vessel_detail, show_alert_detail, zoom_map_to_location, toggle_mode.
+Available pages: overview, sea, rail, road, air, intelligence, simulation, haas, journey.
+Return ONLY valid JSON (no markdown): 
+{{"action": "...", "target": "...", "params": {{}}, "user_reply": "..."}}"""
             res = cached_gemini_call(prompt, response_mime_type="application/json")
             import json
             data = json.loads(res)
             st.session_state.cmd_result = data
         except Exception as e:
-            st.session_state.cmd_result = {"action": "error", "message": f"Error: {str(e)}"}
+            st.session_state.cmd_result = {"action": "error", "user_reply": f"Error: {str(e)}"}
         st.session_state.global_cmd = ""
         
     st.text_input("Command Bar", key="global_cmd", placeholder="Ctrl+K to command AI...", label_visibility="collapsed", on_change=process_command)
@@ -162,15 +167,20 @@ with st.sidebar:
     if "cmd_result" in st.session_state and st.session_state.cmd_result:
         res = st.session_state.cmd_result
         st.session_state.cmd_result = None
-        st.toast(res.get("message", "Command executed"))
+        st.toast(res.get("user_reply", "Command executed")) # duration ~4s by default
         action = res.get("action")
         target = res.get("target")
-        if action == "navigate" and target in _VALID_PAGES:
+        params = res.get("params", {})
+        
+        if action == "navigate_to_page" and target in _VALID_PAGES:
             st.session_state.active_page = target
             st.query_params["p"] = target
-        elif action == "toggle":
+        elif action == "toggle_mode":
             if target in st.session_state:
                 st.session_state[target] = not st.session_state[target]
+        elif action == "zoom_map_to_location":
+            if "coords" in params:
+                st.session_state.map_center = params["coords"]
     # ── Alerts Bell ───────────────────────────────────
     from logistiq.utils.firebase import firebase_read, firebase_write
     raw_alerts = firebase_read("/alerts") or {}
@@ -190,9 +200,13 @@ with st.sidebar:
     def _dot(ok: bool) -> str:
         return "dot-green" if ok else "dot-red"
 
+    gem_status = st.session_state.get("gemini_status", "ok") if gemini_ok else "failed"
+    gem_dot = "dot-green" if gem_status == "ok" else "dot-amber" if gem_status == "retrying" else "dot-red"
+    gem_label = f"Gemini ({gem_status})"
+
     st.markdown(f"""
 <div style='display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;'>
-  <span style='font-size:11px;color:#94a3b8'><span class='status-dot {_dot(gemini_ok)}'></span>Gemini</span>
+  <span style='font-size:11px;color:#94a3b8'><span class='status-dot {gem_dot}'></span>{gem_label}</span>
   <span style='font-size:11px;color:#94a3b8'><span class='status-dot {_dot(fb_ok)}'></span>Firebase</span>
   <span style='font-size:11px;color:#94a3b8'><span class='status-dot {_dot(weather_ok)}'></span>Weather</span>
   <span style='font-size:11px;color:#94a3b8'><span class='status-dot {"dot-amber" if cyclone_on else "dot-green"}'></span>{"⚠ CYCLONE" if cyclone_on else "Clear"}</span>
@@ -201,6 +215,21 @@ with st.sidebar:
     if st.session_state.demo_mode:
         st.warning("🟡 **Demo Mode** active", icon="⚠️")
 
+    st.markdown("<hr style='border-color:rgba(96,165,250,0.1);margin:0 0 8px'>", unsafe_allow_html=True)
+
+    # ── Sync Status ───────────────────────────────────
+    st.markdown("<div style='font-size:10px;color:#475569;font-weight:700;letter-spacing:1px;margin-bottom:4px'>SYNC STATUS</div>", unsafe_allow_html=True)
+    
+    from logistiq.utils.firebase import firebase_flush_queue
+    queue = st.session_state.get("firebase_queue", [])
+    if queue:
+        st.markdown(f"<div style='color:#fbbf24;font-size:12px;margin-bottom:4px'>⚠ {len(queue)} items pending sync</div>", unsafe_allow_html=True)
+        if st.button("Retry Sync", key="retry_sync", use_container_width=True):
+            firebase_flush_queue()
+            st.rerun()
+    else:
+        st.markdown("<div style='color:#4ade80;font-size:12px;margin-bottom:4px'>✅ All synced</div>", unsafe_allow_html=True)
+        
     st.markdown("<hr style='border-color:rgba(96,165,250,0.1);margin:0 0 8px'>", unsafe_allow_html=True)
 
     # ── Navigation ────────────────────────────────────
@@ -299,11 +328,15 @@ maps_ok    = bool(os.getenv("MAPS_API_KEY", ""))
 mode_color = "#fbbf24" if st.session_state.demo_mode else "#4ade80"
 mode_label = "🟡 Demo" if st.session_state.demo_mode else "🟢 Live"
 
+gem_status = st.session_state.get("gemini_status", "ok") if os.getenv("GEMINI_API_KEY") else "failed"
+gem_dot = "dot-green" if gem_status == "ok" else "dot-amber" if gem_status == "retrying" else "dot-red"
+gem_label = f"Gemini ({gem_status})"
+
 st.markdown(f"""
 <div class='status-bar'>
   <span>🕐 {now_str}</span>
   <span class='status-divider'>│</span>
-  <span><span class='status-dot {"dot-green" if gemini_ok else "dot-red"}'></span>Gemini</span>
+  <span><span class='status-dot {gem_dot}'></span>{gem_label}</span>
   <span><span class='status-dot {"dot-green" if fb_ok else "dot-red"}'></span>Firebase</span>
   <span><span class='status-dot {"dot-green" if weather_ok else "dot-red"}'></span>Weather</span>
   <span><span class='status-dot {"dot-green" if maps_ok else "dot-red"}'></span>Maps</span>
