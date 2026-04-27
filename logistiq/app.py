@@ -46,7 +46,7 @@ apply_design_system()
 
 _VALID_PAGES = {
     "overview", "sea", "rail", "road", "air",
-    "intelligence", "simulation", "haas", "add_shipment",
+    "intelligence", "simulation", "haas", "add_shipment", "shipment_detail",
 }
 
 def _go(page: str):
@@ -181,6 +181,11 @@ elif active == "simulation":
     simulation.render()
 elif active == "haas":
     haas.render()
+elif active == "shipment_detail":
+    if st.session_state.get("selected_shipment"):
+        shipments.render_shipment_detail(st.session_state.selected_shipment)
+    else:
+        overview.render()
 else:
     overview.render()
 

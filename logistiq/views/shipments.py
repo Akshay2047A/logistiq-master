@@ -196,27 +196,39 @@ def render_add_form():
 def render_shipment_list():
     """Compact shipment cards for sidebar."""
     shipments = st.session_state.shipments
+    
+    query = st.text_input("🔍 Search...", placeholder="ID, Origin, or Destination", key="shipment_search").lower()
+    
     if not shipments:
         K.empty_state("📦", "No shipments", "Add one via '+ Add Shipment'")
         return
 
+    count = 0
     for idx, s in enumerate(shipments):
+        match = (query in s.get("id", "").lower() or 
+                 query in s.get("origin", "").lower() or 
+                 query in s.get("destination", "").lower())
+        if query and not match:
+            continue
+            
+        count += 1
         risk = s.get("risk_data") or {}
         level = risk.get("risk_level", "Unknown")
-        level_colors = {"Critical": "#f87171", "High": "#fbbf24", "Medium": "#60a5fa", "Low": "#4ade80"}
-        color = level_colors.get(level, "#94a3b8")
+        level_icons = {"Critical": "🚨", "High": "🔴", "Medium": "🟡", "Low": "🟢"}
+        icon = level_icons.get(level, "⚪")
         mode_icons = {"Sea (Vessel)": "🚢", "Rail": "🚂", "Road (Truck)": "🚛", "Air": "✈️"}
         mode_icon = next((v for k, v in mode_icons.items() if k in s.get("transport_mode", "")), "📦")
 
-        st.markdown(f"""
-<div class='shipment-list-card' style='border-left:3px solid {color}'>
-  <span style='font-size:18px'>{mode_icon}</span>
-  <div style='flex:1;min-width:0'>
-    <div class='card-title' style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>{s.get('id','')}</div>
-    <div class='card-sub'>→ {s.get('destination','')[:20]}</div>
-  </div>
-  <span class='badge' style='background:rgba(0,0,0,0.5);color:{color};border:1px solid {color}55;white-space:nowrap'>{level}</span>
-</div>""", unsafe_allow_html=True)
+        # Streamlit button wrapping
+        btn_label = f"{mode_icon} {s.get('id','')} → {s.get('destination','')[:15]}\nRisk: {icon} {level}"
+        if st.button(btn_label, key=f"btn_ship_{s.get('id', idx)}_{idx}", use_container_width=True):
+            st.session_state.selected_shipment = s
+            st.session_state.active_page = "shipment_detail"
+            st.query_params["p"] = "shipment_detail"
+            st.rerun()
+            
+    if count == 0 and shipments:
+        st.caption("No matching shipments found.")
 
 
 def render_shipment_detail(s: dict):
