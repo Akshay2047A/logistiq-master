@@ -46,7 +46,7 @@ apply_design_system()
 
 _VALID_PAGES = {
     "overview", "sea", "rail", "road", "air",
-    "intelligence", "simulation", "haas", "add_shipment", "shipment_detail",
+    "intelligence", "simulation", "haas", "add_shipment", "shipment_detail", "journey",
 }
 
 def _go(page: str):
@@ -118,6 +118,7 @@ with st.sidebar:
         ("📡",  "Intelligence",  "intelligence"),
         ("🧪",  "Simulation",    "simulation"),
         ("📞",  "Field Reports", "haas"),
+        ("🗺️",  "Journey",       "journey"),
     ]
 
     for icon, label, key in NAV_ITEMS:
@@ -181,6 +182,9 @@ elif active == "simulation":
     simulation.render()
 elif active == "haas":
     haas.render()
+elif active == "journey":
+    from logistiq.views import journey
+    journey.render()
 elif active == "shipment_detail":
     if st.session_state.get("selected_shipment"):
         shipments.render_shipment_detail(st.session_state.selected_shipment)

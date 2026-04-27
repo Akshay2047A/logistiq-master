@@ -279,6 +279,7 @@ def render_top_nav():
         "intelligence": "Intel",
         "simulation": "Simulate",
         "haas": "Field",
+        "journey": "Journey",
     }
 
     nav_cols = st.columns([1.8] + [1] * len(pages) + [1.2, 0.8], gap="small")
@@ -617,6 +618,10 @@ def main():
     elif page == "haas":
         from pages.haas import render as render_haas
         render_haas(demo_responses_data)
+        
+    elif page == "journey":
+        from pages.journey import render as render_journey
+        render_journey()
 
     # Status bar
     render_status_bar()
