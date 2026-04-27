@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import app
 import base64
 import os
