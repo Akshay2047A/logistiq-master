@@ -1,0 +1,78 @@
+{
+  "reroute": {
+    "primary_recommendation": "Immediately divert MV Chennai Star to Visakhapatnam Port and execute Sea→Rail→Road cascade to protect Maruti Manesar assembly line.",
+    "cascade": {
+      "sea": {
+        "action": "Divert to Visakhapatnam Port",
+        "alt_port": "Visakhapatnam",
+        "reason": "Draft 15.2m compatible with Vizag 17.5m limit. Congestion 3/10 vs Chennai 8/10. Berth 7 available.",
+        "new_eta_hours": 51
+      },
+      "rail": {
+        "train_id": "58501",
+        "name": "SCR Godavari Freight Express",
+        "wagons_needed": 12,
+        "departure": "Holding 90 min for vessel sync",
+        "full_eta": "Secunderabad 14:45 → Manesar 36hrs total"
+      },
+      "road": {
+        "trucks": [
+          "TRK-CHN-101",
+          "TRK-CHN-204",
+          "TRK-CHN-509"
+        ],
+        "action": "Reposition from Chennai Port to Vizag SCR Terminal",
+        "distance_km": 342,
+        "eta_hours": 5.4
+      },
+      "air": {
+        "needed": false,
+        "reason": "Rail route viable within 96hr assembly line deadline.",
+        "option": "IndiGo Cargo Vizag→Hyderabad→Delhi",
+        "cost_lakh": 14.2,
+        "triggers_if": "Rail delayed beyond 8 additional hours"
+      }
+    },
+    "financial": {
+      "exposure_without_action_crore": 9.6,
+      "reroute_cost_delta_crore": 0.38,
+      "assembly_line_risk_crore": 7.2,
+      "net_savings_crore": 8.84
+    },
+    "time": {
+      "original_eta_hours": 48,
+      "new_eta_hours": 51,
+      "days_saved": 3.5
+    },
+    "confidence": 94,
+    "live_intel": "Google Search confirms: Visakhapatnam Port normal operations. No strike action. SCR Train 58501 on schedule per FOIS. NH16 clear per NHAI advisory. Cyclone Mocha trajectory confirmed by IMD toward Chennai coastline.",
+    "geopolitical": "Bay of Bengal: no piracy advisories. Red Sea: Houthi risk ongoing but does not affect Chennai-Vizag coastal route.",
+    "social_impact": "Protects 340 dock worker shifts at Vizag, 4200 Maruti engine blocks prevent 2300-worker plant shutdown, cold chain for Cipla medical supplies to 3 rural AP hospitals maintained.",
+    "tidal": "Vizag tidal window 22hrs/day. Vessel draft 15.2m within 17.5m limit. No anchoring wait required."
+  },
+  "captain_report": {
+    "reporter_type": "Ship Captain",
+    "asset_id": "MV Chennai Star",
+    "delay_hours": 12,
+    "cargo_status": "intact",
+    "location": "Bay of Bengal 13.52N 83.21E",
+    "weather_conditions": "Squall, wind 45kmh, wave 3.2m",
+    "urgency": "high",
+    "action_required": true,
+    "recommended_action": "Reduce to 8kn, alter course 15° north to skirt squall edge",
+    "notify": [
+      "Command Center",
+      "Chennai Port Authority",
+      "Maruti Logistics"
+    ],
+    "summary": "MV Chennai Star hit squall at 13.52N 83.21E. 12hr delay. Cargo intact. Reroute recommended."
+  },
+  "container_vision": {
+    "damage_rating": 3,
+    "damage_description": "Minor surface corrosion on lower panels. Structural integrity intact.",
+    "hazmat_detected": false,
+    "action_required": false,
+    "container_id": "MRKU3456789",
+    "confidence": "high"
+  }
+}

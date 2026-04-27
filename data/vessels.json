@@ -1,0 +1,47 @@
+[
+  {
+    "id": "VSL-CHN-001",
+    "name": "MV Chennai Star",
+    "imo": "9384721",
+    "status": "At Sea",
+    "origin_port_id": "PRT-VSK",
+    "destination_port_id": "PRT-CHN",
+    "lat": 14.3502,
+    "lon": 81.9813,
+    "speed_knots": 15.2,
+    "eta_utc": "2026-04-27T09:30:00Z",
+    "cargo_type": "Containerized Electronics",
+    "capacity_teu": 1850,
+    "cargo_tons": 1120
+  },
+  {
+    "id": "VSL-CHN-002",
+    "name": "MV Coromandel Wave",
+    "imo": "9451207",
+    "status": "Docked",
+    "origin_port_id": "PRT-CHN",
+    "destination_port_id": "PRT-VSK",
+    "lat": 13.0960,
+    "lon": 80.3003,
+    "speed_knots": 0.0,
+    "eta_utc": "2026-04-27T16:10:00Z",
+    "cargo_type": "Automotive Components",
+    "capacity_teu": 1420,
+    "cargo_tons": 860
+  },
+  {
+    "id": "VSL-VSK-003",
+    "name": "MV Bay Runner",
+    "imo": "9226108",
+    "status": "Approaching Port",
+    "origin_port_id": "PRT-CHN",
+    "destination_port_id": "PRT-VSK",
+    "lat": 17.2704,
+    "lon": 82.7421,
+    "speed_knots": 10.9,
+    "eta_utc": "2026-04-26T20:45:00Z",
+    "cargo_type": "Industrial Machinery",
+    "capacity_teu": 980,
+    "cargo_tons": 640
+  }
+]

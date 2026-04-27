@@ -1,0 +1,35 @@
+[
+  {
+    "id": "PRT-CHN",
+    "name": "Chennai Port",
+    "city": "Chennai",
+    "lat": 13.0960,
+    "lon": 80.3003,
+    "berths": 24,
+    "daily_teu_capacity": 15000,
+    "congestion_level": "Moderate",
+    "default_route_cost_per_km": 14
+  },
+  {
+    "id": "PRT-KAM",
+    "name": "Kamarajar Port (Ennore)",
+    "city": "Chennai",
+    "lat": 13.2567,
+    "lon": 80.3650,
+    "berths": 16,
+    "daily_teu_capacity": 8200,
+    "congestion_level": "Low",
+    "default_route_cost_per_km": 13
+  },
+  {
+    "id": "PRT-VSK",
+    "name": "Visakhapatnam Port",
+    "city": "Visakhapatnam",
+    "lat": 17.6868,
+    "lon": 83.2818,
+    "berths": 20,
+    "daily_teu_capacity": 11200,
+    "congestion_level": "High",
+    "default_route_cost_per_km": 15
+  }
+]

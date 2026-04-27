@@ -1,0 +1,68 @@
+[
+  {
+    "train_id": "58501",
+    "name": "SCR Godavari Freight Express",
+    "origin": "Visakhapatnam",
+    "origin_lat": 17.6868,
+    "origin_lng": 83.2818,
+    "destination": "Secunderabad",
+    "destination_lat": 17.4399,
+    "destination_lng": 78.4983,
+    "departure_time": "06:30",
+    "arrival_time": "14:45",
+    "journey_hours": 8.25,
+    "available_wagons": 14,
+    "max_load_tons": 840,
+    "cargo_types": [
+      "auto_parts",
+      "electronics",
+      "containers"
+    ],
+    "status": "on_time",
+    "platform": "7B"
+  },
+  {
+    "train_id": "57229",
+    "name": "SCR Krishna Cargo Link",
+    "origin": "Visakhapatnam",
+    "origin_lat": 17.6868,
+    "origin_lng": 83.2818,
+    "destination": "Vijayawada",
+    "destination_lat": 16.5062,
+    "destination_lng": 80.648,
+    "departure_time": "11:15",
+    "arrival_time": "16:40",
+    "journey_hours": 5.42,
+    "available_wagons": 9,
+    "max_load_tons": 540,
+    "cargo_types": [
+      "bulk",
+      "containers"
+    ],
+    "status": "on_time",
+    "platform": "3A"
+  },
+  {
+    "train_id": "77601",
+    "name": "SCR Night Bulk Freight",
+    "origin": "Visakhapatnam",
+    "origin_lat": 17.6868,
+    "origin_lng": 83.2818,
+    "destination": "Pune",
+    "destination_lat": 18.5204,
+    "destination_lng": 73.8567,
+    "departure_time": "22:00",
+    "arrival_time": "08:30",
+    "journey_hours": 10.5,
+    "available_wagons": 18,
+    "max_load_tons": 1080,
+    "cargo_types": [
+      "auto_parts",
+      "bulk",
+      "industrial"
+    ],
+    "status": "delayed",
+    "platform": "9C",
+    "delay_reason": "Passenger train priority — Rajdhani 12723 running late"
+  }
+]
