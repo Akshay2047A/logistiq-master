@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """Map rendering functions using Folium."""
 import folium
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium
+from folium.plugins import AntPath
+import streamlit as st
 
 
 def make_base_map(lat: float = 15.0, lon: float = 82.0, zoom: int = 6) -> folium.Map:
@@ -116,7 +118,7 @@ def add_cyclone(fmap: folium.Map, lat: float = 14.8, lon: float = 85.6, radius_k
 # ---------------------------------------------------------------------------
 
 def add_reroute_path(fmap: folium.Map):
-    folium.PolyLine([[13.5, 83.2], [17.6868, 83.2818]], color="#FF6B35", weight=4, dash_array="8,6").add_to(fmap)
+    AntPath([[13.5, 83.2], [17.6868, 83.2818]], color="#FF6B35", weight=4, delay=800, dash_array=[10, 20]).add_to(fmap)
     folium.PolyLine([[17.6868, 83.2818], [17.68, 83.21]], color="#fbbf24", weight=4).add_to(fmap)
     folium.PolyLine([[17.68, 83.21], [17.4399, 78.4983]], color="#22c55e", weight=4).add_to(fmap)
     legend = """
@@ -185,4 +187,12 @@ def make_world_chokepoint_map(intel: dict) -> folium.Map:
 
 
 def render_map(fmap: folium.Map, height: int = 520):
-    folium_static(fmap, width=None, height=height)
+    map_data = st_folium(fmap, use_container_width=True, height=height, returned_objects=["last_object_clicked", "zoom"])
+    if map_data:
+        st.session_state.map_click = map_data
+    
+    if st.session_state.get("map_click"):
+        click = st.session_state.map_click.get("last_object_clicked")
+        zoom = st.session_state.map_click.get("zoom")
+        if click:
+            st.markdown(f"<div class='glass-card' style='font-size:12px;margin-top:10px'><b>🗺 Map Data</b> | Clicked: {click.get('lat'):.4f}, {click.get('lng'):.4f} | Zoom: {zoom}</div>", unsafe_allow_html=True)

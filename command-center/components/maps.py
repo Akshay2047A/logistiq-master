@@ -2,8 +2,18 @@
 """Folium map rendering functions for all pages."""
 
 import folium
+from folium.plugins import AntPath
 import streamlit as st
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium
+
+def _render_and_store(fmap, height):
+    map_data = st_folium(fmap, use_container_width=True, height=height, returned_objects=["last_object_clicked", "zoom"])
+    if map_data:
+        st.session_state.map_click = map_data
+    if st.session_state.get("map_click"):
+        click = st.session_state.map_click.get("last_object_clicked")
+        if click:
+            st.markdown(f"<div class='glass-card' style='font-size:12px;margin-top:10px;padding:8px'><b>🗺 Map Click</b> | Lat: {click.get('lat'):.4f}, Lng: {click.get('lng'):.4f}</div>", unsafe_allow_html=True)
 
 
 def _ship_svg(color="#44c5ff"):
@@ -48,11 +58,11 @@ def render_overview_map(vessels, ports, trucks, cyclone_on=False, reroute_on=Fal
         folium.Marker([14.8, 85.6], icon=folium.DivIcon(html="<div style='font-size:16px;color:#ff5a83'>🌀 Cat.3 Cyclone</div>")).add_to(fmap)
 
     if reroute_on:
-        folium.PolyLine([[13.5, 83.2], [17.6868, 83.2818]], color="#FF6B35", weight=4, dash_array="8,6").add_to(fmap)
+        AntPath([[13.5, 83.2], [17.6868, 83.2818]], color="#FF6B35", weight=4, delay=800, dash_array=[10, 20]).add_to(fmap)
         folium.PolyLine([[17.6868, 83.2818], [17.68, 83.21]], color="#fbbf24", weight=4).add_to(fmap)
         folium.PolyLine([[17.68, 83.21], [17.4399, 78.4983]], color="#22c55e", weight=4).add_to(fmap)
 
-    folium_static(fmap, width=None, height=height)
+    _render_and_store(fmap, height)
 
 
 def render_rail_map(height=350):
@@ -62,7 +72,7 @@ def render_rail_map(height=350):
     folium.PolyLine(wps, color="#fbbf24", weight=4, dash_array="10,6", tooltip="SCR Freight Corridor").add_to(fmap)
     for wp, lb in zip(wps, labels):
         folium.Marker(wp, tooltip=lb, icon=folium.Icon(color="orange", icon="train", prefix="fa")).add_to(fmap)
-    folium_static(fmap, width=None, height=height)
+    _render_and_store(fmap, height)
 
 
 def render_road_map(trucks, cyclone_on=False, height=380):
@@ -73,7 +83,7 @@ def render_road_map(trucks, cyclone_on=False, height=380):
         folium.Marker([t["lat"], t["lon"]], tooltip=t["id"] + (" — REPOSITIONING" if repo else ""),
             popup=f"{t['id']} | {t.get('driver', '')} | {t.get('availability', '')}",
             icon=folium.DivIcon(html=f"<div style='font-size:18px;color:{c}'>🚛</div>")).add_to(fmap)
-    folium_static(fmap, width=None, height=height)
+    _render_and_store(fmap, height)
 
 
 def render_chokepoint_map(intel_data=None, height=420):
@@ -92,4 +102,4 @@ def render_chokepoint_map(intel_data=None, height=420):
         folium.CircleMarker([cp["lat"], cp["lon"]], radius=14, color=rc.get(risk, "#60a5fa"),
             fill=True, fill_opacity=0.7, popup=f"<b>{name}</b><br>Risk: {risk}<br>{d.get('detail', 'N/A')}",
             tooltip=f"{name} — {risk}").add_to(fmap)
-    folium_static(fmap, width=None, height=height)
+    _render_and_store(fmap, height)
