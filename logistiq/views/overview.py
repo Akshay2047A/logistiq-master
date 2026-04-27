@@ -71,6 +71,41 @@ def render():
             st.markdown("<div style='text-align:right;margin-top:10px'><span class='badge badge-safe'>All Clear</span></div>", unsafe_allow_html=True)
 
     # ── PART D — KPI row (5 metrics) ───────────────────
+    if not st.session_state.get("dismiss_risk_banner", False) and shipments_list:
+        curr_hash = hash(str([(s.get('id'), s.get('risk_analyzed')) for s in shipments_list]))
+        if st.session_state.get("banner_shipment_hash") != curr_hash:
+            try:
+                from logistiq.utils.gemini import cached_gemini_call
+                shipment_subset = [{"id": s.get("id"), "cargo": s.get("cargo_desc"), "risk_data": s.get("risk_data")} for s in shipments_list]
+                prompt = f"Given these shipments: {shipment_subset}. Return JSON with up to top 3 at-risk shipments. Format: {{\"at_risk\": [{{\"id\": \"...\", \"reason\": \"...\", \"delay_hrs\": ...}}]}}"
+                res = cached_gemini_call(prompt, response_mime_type="application/json")
+                import json
+                data = json.loads(res)
+                st.session_state.at_risk_banner_data = data.get("at_risk", [])
+            except Exception:
+                st.session_state.at_risk_banner_data = []
+            st.session_state.banner_shipment_hash = curr_hash
+
+        banner_data = st.session_state.get("at_risk_banner_data", [])
+        if banner_data:
+            with st.container(border=True):
+                st.markdown("#### 🚨 AI Alert: Top At-Risk Shipments")
+                cols = st.columns(len(banner_data) + 1)
+                for i, r in enumerate(banner_data):
+                    with cols[i]:
+                        st.markdown(f"**{r.get('id')}**\n\n*{r.get('reason')}*\n\n**Predicted Delay:** {r.get('delay_hrs')} hrs")
+                        if st.button("🗺️ View Journey", key=f"btn_journey_banner_{r.get('id')}", use_container_width=True):
+                            shp = next((s for s in shipments_list if s.get('id') == r.get('id')), None)
+                            if shp:
+                                st.session_state.selected_shipment = shp
+                                st.session_state.active_page = "journey"
+                                st.query_params["p"] = "journey"
+                                st.rerun()
+                with cols[-1]:
+                    if st.button("✖ Dismiss", key="dismiss_banner", use_container_width=True):
+                        st.session_state.dismiss_risk_banner = True
+                        st.rerun()
+
     # Disaster Relief Mode Override Check
     if st.session_state.get("relief_mode", False):
         st.markdown("""

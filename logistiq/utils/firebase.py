@@ -55,3 +55,14 @@ def firebase_delete(path: str) -> bool:
         return r.ok
     except Exception:  # noqa: BLE001
         return False
+
+def check_firebase_connection() -> bool:
+    """Lightweight check if Firebase is reachable."""
+    base = _base()
+    if not base:
+        return False
+    try:
+        r = requests.get(f"{base}/.json?shallow=true", timeout=5)
+        return r.ok
+    except Exception:  # noqa: BLE001
+        return False

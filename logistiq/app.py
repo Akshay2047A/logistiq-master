@@ -5,6 +5,7 @@ from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
+from streamlit_autorefresh import st_autorefresh
 
 # ── Load env ──────────────────────────────────────────────────────────────────
 _env_search = [
@@ -38,6 +39,38 @@ from logistiq.views import (
 # ── Boot ──────────────────────────────────────────────────────────────────────
 init_session_state()
 apply_design_system()
+
+st_autorefresh(interval=30000, key="global_30s_autorefresh")
+
+try:
+    dialog_decorator = st.dialog
+except AttributeError:
+    dialog_decorator = st.experimental_dialog
+
+@dialog_decorator("🔔 Active Alerts")
+def show_alert_panel():
+    from logistiq.utils.firebase import firebase_read, firebase_write
+    raw_alerts = firebase_read("/alerts") or {}
+    unread = {k: v for k, v in raw_alerts.items() if not v.get("ack")}
+    
+    if not unread:
+        st.success("All caught up! No unread alerts.")
+        return
+        
+    for k, a in unread.items():
+        st.error(f"**{a.get('shipment_id', 'Unknown')}**: {a.get('msg', '')}")
+        col1, col2 = st.columns(2)
+        if col1.button("✅ Acknowledge", key=f"ack_{k}"):
+            firebase_write(f"/alerts/{k}/ack", True)
+            st.rerun()
+        if col2.button("🗺️ Go to Shipment", key=f"go_{k}"):
+            st.session_state.active_page = "journey"
+            st.query_params["p"] = "journey"
+            shipments = st.session_state.get("shipments", [])
+            shp = next((s for s in shipments if s.get('id') == a.get("shipment_id")), None)
+            if shp:
+                st.session_state.selected_shipment = shp
+            st.rerun()
 
 # ── Navigation via query params (instant, no stale-render bug) ─────────────
 # Query param ?p=sea is used as the source of truth for current page.
@@ -85,10 +118,74 @@ with st.sidebar:
 """, unsafe_allow_html=True)
 
     # Status pills
-    fb_ok      = bool(os.getenv("FIREBASE_URL", ""))
+    from logistiq.utils.firebase import check_firebase_connection
+    fb_ok      = check_firebase_connection()
     gemini_ok  = bool(os.getenv("GEMINI_API_KEY", ""))
     weather_ok = bool(os.getenv("WEATHER_API_KEY", ""))
     cyclone_on = st.session_state.cyclone_triggered
+
+    # ── AI Command Bar ───────────────────────────────────
+    st.markdown("""
+        <script>
+        const doc = window.parent.document;
+        doc.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                const inputs = doc.querySelectorAll('input');
+                for (let i = 0; i < inputs.length; i++) {
+                    if (inputs[i].getAttribute('aria-label') === 'Command Bar') {
+                        inputs[i].focus();
+                        break;
+                    }
+                }
+            }
+        });
+        </script>
+    """, unsafe_allow_html=True)
+    
+    def process_command():
+        cmd = st.session_state.get("global_cmd", "").strip()
+        if not cmd: return
+        try:
+            from logistiq.utils.gemini import cached_gemini_call
+            prompt = f'User command: "{cmd}"\nParse this into JSON format: {{"action": "...", "target": "...", "message": "..."}}\nActions: "navigate" (target: overview, sea, rail, road, air, intelligence, simulation, haas, journey), "toggle" (target: demo_mode, gemma_mode, relief_mode), "other" (target: None). Message is a short toast notification to show the user. Return ONLY valid JSON without markdown formatting.'
+            res = cached_gemini_call(prompt, response_mime_type="application/json")
+            import json
+            data = json.loads(res)
+            st.session_state.cmd_result = data
+        except Exception as e:
+            st.session_state.cmd_result = {"action": "error", "message": f"Error: {str(e)}"}
+        st.session_state.global_cmd = ""
+        
+    st.text_input("Command Bar", key="global_cmd", placeholder="Ctrl+K to command AI...", label_visibility="collapsed", on_change=process_command)
+    
+    if "cmd_result" in st.session_state and st.session_state.cmd_result:
+        res = st.session_state.cmd_result
+        st.session_state.cmd_result = None
+        st.toast(res.get("message", "Command executed"))
+        action = res.get("action")
+        target = res.get("target")
+        if action == "navigate" and target in _VALID_PAGES:
+            st.session_state.active_page = target
+            st.query_params["p"] = target
+        elif action == "toggle":
+            if target in st.session_state:
+                st.session_state[target] = not st.session_state[target]
+    # ── Alerts Bell ───────────────────────────────────
+    from logistiq.utils.firebase import firebase_read, firebase_write
+    raw_alerts = firebase_read("/alerts") or {}
+    if not raw_alerts:
+        mock_alert = {"msg": "Cyclone Warning: MV Chennai Star at risk", "shipment_id": "VSL-001", "ack": False}
+        firebase_write("/alerts/alert_1", mock_alert)
+        raw_alerts = {"alert_1": mock_alert}
+        
+    unread_count = sum(1 for a in raw_alerts.values() if not a.get("ack"))
+    if st.button(f"🔔 Notifications ({unread_count})", key="nav_alerts_bell", use_container_width=True):
+        show_alert_panel()
+        
+    st.markdown("<hr style='border-color:rgba(96,165,250,0.1);margin:8px 0'>", unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
 
     def _dot(ok: bool) -> str:
         return "dot-green" if ok else "dot-red"
@@ -206,10 +303,10 @@ st.markdown(f"""
 <div class='status-bar'>
   <span>🕐 {now_str}</span>
   <span class='status-divider'>│</span>
-  <span><span class='status-dot {_dot(gemini_ok)}'></span>Gemini</span>
-  <span><span class='status-dot {_dot(fb_ok)}'></span>Firebase</span>
-  <span><span class='status-dot {_dot(weather_ok)}'></span>Weather</span>
-  <span><span class='status-dot {_dot(maps_ok)}'></span>Maps</span>
+  <span><span class='status-dot {"dot-green" if gemini_ok else "dot-red"}'></span>Gemini</span>
+  <span><span class='status-dot {"dot-green" if fb_ok else "dot-red"}'></span>Firebase</span>
+  <span><span class='status-dot {"dot-green" if weather_ok else "dot-red"}'></span>Weather</span>
+  <span><span class='status-dot {"dot-green" if maps_ok else "dot-red"}'></span>Maps</span>
   <span class='status-divider'>│</span>
   <span style='color:{mode_color}'>{mode_label}</span>
   <div style='flex:1'></div>

@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 try:
     from dotenv import load_dotenv
@@ -268,6 +269,36 @@ def apply_design_system():
 # Navigation
 # ---------------------------------------------------------------------------
 
+try:
+    dialog_decorator = st.dialog
+except AttributeError:
+    dialog_decorator = st.experimental_dialog
+
+@dialog_decorator("🔔 Active Alerts")
+def show_alert_panel():
+    from utils.firebase import firebase_read, firebase_write
+    raw_alerts = firebase_read("/alerts") or {}
+    unread = {k: v for k, v in raw_alerts.items() if not v.get("ack")}
+    
+    if not unread:
+        st.success("All caught up! No unread alerts.")
+        return
+        
+    for k, a in unread.items():
+        st.error(f"**{a.get('shipment_id', 'Unknown')}**: {a.get('msg', '')}")
+        col1, col2 = st.columns(2)
+        if col1.button("✅ Acknowledge", key=f"ack_{k}"):
+            firebase_write(f"/alerts/{k}/ack", True)
+            st.rerun()
+        if col2.button("🗺️ Go to Shipment", key=f"go_{k}"):
+            st.session_state.active_page = "journey"
+            st.query_params["p"] = "journey"
+            shipments = st.session_state.get("shipments", [])
+            shp = next((s for s in shipments if s.get('id') == a.get("shipment_id")), None)
+            if shp:
+                st.session_state.selected_shipment = shp
+            st.rerun()
+
 def render_top_nav():
     """Top navigation bar using Streamlit columns + buttons."""
     pages = {
@@ -296,8 +327,17 @@ def render_top_nav():
 
     # Alerts count
     with nav_cols[-2]:
-        n_alerts = 3 if st.session_state.get("cyclone_triggered") else 1
-        st.button(f"🔔 ({n_alerts})", key="nav_alerts", use_container_width=True)
+        from utils.firebase import firebase_read, firebase_write
+        raw_alerts = firebase_read("/alerts") or {}
+        if not raw_alerts:
+            # Seed mock alert
+            mock_alert = {"msg": "Cyclone Warning: MV Chennai Star at risk", "shipment_id": "VSL-001", "ack": False}
+            firebase_write("/alerts/alert_1", mock_alert)
+            raw_alerts = {"alert_1": mock_alert}
+            
+        unread_count = sum(1 for a in raw_alerts.values() if not a.get("ack"))
+        if st.button(f"🔔 ({unread_count})", key="nav_alerts", use_container_width=True):
+            show_alert_panel()
 
     with nav_cols[-1]:
         if st.session_state.get("demo_mode"):
@@ -382,12 +422,22 @@ def render_ticker():
 def render_status_bar():
     now = datetime.now().strftime("%H:%M:%S IST, %d %b %Y")
     demo = "DEMO" if st.session_state.get("demo_mode") else "LIVE"
-    fb = "🟢 Firebase" if st.session_state.get("firebase_ok") else "🔴 Firebase"
+    
+    # Real connectivity checks for dots
+    from utils.firebase import check_firebase_connection
+    fb_ok = check_firebase_connection()
+    gem_ok = bool(os.getenv("GEMINI_API_KEY", ""))
+    wth_ok = bool(os.getenv("WEATHER_API_KEY", ""))
+    
+    fb_icon = "🟢 Firebase" if fb_ok else "🔴 Firebase"
+    gem_icon = "🟢 Gemini" if gem_ok else "🔴 Gemini"
+    wth_icon = "🟢 WeatherAPI" if wth_ok else "🔴 WeatherAPI"
+    
     st.markdown(
         f"""
         <div class='status-bar'>
           <span>{demo} | Last refresh: {now}</span>
-          <span>{fb} | WeatherAPI ✅ | Gemini ✅ | Google Maps ✅</span>
+          <span>{fb_icon} | {wth_icon} | {gem_icon} | 🟢 Google Maps</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -570,6 +620,8 @@ def main():
     from utils.firebase import check_firebase_connection
     if "firebase_ok" not in st.session_state or not st.session_state.firebase_ok:
         st.session_state.firebase_ok = check_firebase_connection()
+
+    st_autorefresh(interval=30000, key="global_30s_autorefresh")
 
     render_sidebar()
     render_ticker()
