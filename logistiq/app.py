@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""LogistiQ Command Center — single-page Streamlit app (v2.2)."""
+"""LogistiQ Command Center — single-page Streamlit app (v3.1)."""
 import os
+import time
 from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
-from streamlit_autorefresh import st_autorefresh
 
 # ── Load env ──────────────────────────────────────────────────────────────────
 _env_search = [
@@ -40,7 +40,12 @@ from logistiq.views import (
 init_session_state()
 apply_design_system()
 
-st_autorefresh(interval=30000, key="global_30s_autorefresh")
+# Auto-refresh (wrapped to prevent crash if package missing)
+try:
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=30000, key="global_30s_autorefresh")
+except Exception:
+    pass
 
 try:
     dialog_decorator = st.dialog
@@ -66,8 +71,8 @@ def show_alert_panel():
         if col2.button("🗺️ Go to Shipment", key=f"go_{k}"):
             st.session_state.active_page = "journey"
             st.query_params["p"] = "journey"
-            shipments = st.session_state.get("shipments", [])
-            shp = next((s for s in shipments if s.get('id') == a.get("shipment_id")), None)
+            shps = st.session_state.get("shipments", [])
+            shp = next((s for s in shps if s.get('id') == a.get("shipment_id")), None)
             if shp:
                 st.session_state.selected_shipment = shp
             st.rerun()
@@ -77,11 +82,7 @@ def show_alert_panel():
             firebase_write(f"/alerts/{k}/ack", True)
         st.rerun()
 
-# ── Navigation via query params (instant, no stale-render bug) ─────────────
-# Query param ?p=sea is used as the source of truth for current page.
-# When a nav button is clicked we SET the query param and rerun — the read
-# at the top of the next run is always fresh.
-
+# ── Navigation via query params ────────────────────────────────────────────
 _VALID_PAGES = {
     "overview", "sea", "rail", "road", "air",
     "intelligence", "simulation", "haas", "add_shipment", "shipment_detail", "journey",
@@ -98,10 +99,57 @@ def _go(page: str):
 # Resolve active page: prefer query param → session state → default
 _qp = st.query_params.get("p", "")
 if _qp in _VALID_PAGES:
-    # Keep session state in sync with query param
     if st.session_state.active_page != _qp:
         st.session_state.active_page = _qp
 active = st.session_state.active_page or "overview"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOP NAVIGATION BAR
+# ─────────────────────────────────────────────────────────────────────────────
+def render_top_navbar(active_page: str):
+    pages = [
+        ("🗺", "Overview",   "overview"),
+        ("🌊", "Sea",        "sea"),
+        ("🚂", "Rail",       "rail"),
+        ("🚛", "Road",       "road"),
+        ("✈", "Air",        "air"),
+        ("📡", "Intel",      "intelligence"),
+        ("🧪", "Simulate",   "simulation"),
+        ("📞", "Field",      "haas"),
+        ("🗺️", "Journey",    "journey"),
+    ]
+    st.markdown("""
+<div style='
+  background:rgba(5,10,20,0.97);
+  border-bottom:1px solid rgba(96,165,250,0.1);
+  padding:8px 20px 6px;
+  display:flex; align-items:center; gap:6px;
+  position:sticky; top:0; z-index:500;
+  backdrop-filter:blur(12px);
+  margin-bottom:12px;
+'>
+""", unsafe_allow_html=True)
+
+    logo_col, *nav_cols, spacer = st.columns([2] + [1] * len(pages) + [1])
+    with logo_col:
+        st.markdown(
+            "<span style='color:#FF6B35;font-weight:800;font-size:18px;line-height:36px'>🚢 LogistiQ</span>",
+            unsafe_allow_html=True
+        )
+    for i, (icon, label, key) in enumerate(pages):
+        with nav_cols[i]:
+            btn_type = "primary" if active_page == key else "secondary"
+            if st.button(
+                f"{icon} {label}",
+                key=f"topnav_{key}",
+                use_container_width=True,
+                type=btn_type,
+            ):
+                _go(key)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+render_top_navbar(active)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIDEBAR — navigation + shipments list
@@ -112,7 +160,7 @@ with st.sidebar:
 <div style='padding:10px 4px 6px;'>
   <div style='font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#fff'>
     Logisti<span style='color:#FF6B35'>Q</span>
-    <span style='font-size:11px;font-weight:400;color:#64748b;margin-left:6px'>v3.0</span>
+    <span style='font-size:11px;font-weight:400;color:#64748b;margin-left:6px'>v3.1</span>
   </div>
   <div style='font-size:11px;color:#64748b;margin-top:2px'>Chennai · Vizag · Manesar</div>
   <div style='margin-top:6px;display:flex;gap:4px'>
@@ -153,7 +201,6 @@ with st.sidebar:
         if not cmd: return
         try:
             from logistiq.utils.gemini import cached_gemini_call
-            from logistiq.utils.gemini import cached_gemini_call
             prompt = f"""You are a logistics ops assistant. The user typed: "{cmd}"
 Available actions: navigate_to_page, filter_shipments, trigger_reroute, show_vessel_detail, show_alert_detail, zoom_map_to_location, toggle_mode.
 Available pages: overview, sea, rail, road, air, intelligence, simulation, haas, journey.
@@ -172,7 +219,7 @@ Return ONLY valid JSON (no markdown):
     if "cmd_result" in st.session_state and st.session_state.cmd_result:
         res = st.session_state.cmd_result
         st.session_state.cmd_result = None
-        st.toast(res.get("user_reply", "Command executed")) # duration ~4s by default
+        st.toast(res.get("user_reply", "Command executed"))
         action = res.get("action")
         target = res.get("target")
         params = res.get("params", {})
@@ -186,6 +233,7 @@ Return ONLY valid JSON (no markdown):
         elif action == "zoom_map_to_location":
             if "coords" in params:
                 st.session_state.map_center = params["coords"]
+
     # ── Alerts Bell ───────────────────────────────────
     from logistiq.utils.firebase import firebase_read, firebase_write
     raw_alerts = firebase_read("/alerts") or {}
@@ -199,7 +247,6 @@ Return ONLY valid JSON (no markdown):
         show_alert_panel()
         
     st.markdown("<hr style='border-color:rgba(96,165,250,0.1);margin:8px 0'>", unsafe_allow_html=True)
-    
     st.markdown("<br>", unsafe_allow_html=True)
 
     def _dot(ok: bool) -> str:
@@ -208,7 +255,6 @@ Return ONLY valid JSON (no markdown):
     gem_status = st.session_state.get("gemini_status", "ok") if gemini_ok else "failed"
     gem_dot = "dot-green" if gem_status == "ok" else "dot-amber" if gem_status == "retrying" else "dot-red"
     gem_label = f"Gemini ({gem_status})"
-    import time
     elapsed = (time.time() % 30)
     remaining = int(30 - elapsed)
 
@@ -234,8 +280,12 @@ Return ONLY valid JSON (no markdown):
     from logistiq.utils.firebase import firebase_flush_queue
     queue = st.session_state.get("firebase_queue", [])
     if queue:
-        st.markdown(f"<div style='color:#fbbf24;font-size:12px;margin-bottom:4px'>⚠ {len(queue)} items pending sync</div>", unsafe_allow_html=True)
-        if st.button("Retry Sync", key="retry_sync", use_container_width=True):
+        st.markdown(f"""
+<div style='display:flex;align-items:center;gap:6px;color:#fbbf24;font-size:12px;margin-bottom:4px'>
+  <span style='width:8px;height:8px;border-radius:50%;background:#fbbf24;animation:pulse 1s infinite;display:inline-block;flex-shrink:0'></span>
+  {len(queue)} items pending sync
+</div>""", unsafe_allow_html=True)
+        if st.button("↺ Retry Sync", key="retry_sync", use_container_width=True):
             firebase_flush_queue()
             st.rerun()
     else:
@@ -249,13 +299,13 @@ Return ONLY valid JSON (no markdown):
     NAV_ITEMS = [
         ("🗺",  "Overview",       "overview"),
         ("🌊",  "Sea & Maritime", "sea"),
-        ("🚂",  "Rail",          "rail"),
-        ("🚛",  "Road",          "road"),
-        ("✈️",  "Air Cargo",     "air"),
-        ("📡",  "Intelligence",  "intelligence"),
-        ("🧪",  "Simulation",    "simulation"),
-        ("📞",  "Field Reports", "haas"),
-        ("🗺️",  "Journey",       "journey"),
+        ("🚂",  "Rail",           "rail"),
+        ("🚛",  "Road",           "road"),
+        ("✈️",  "Air Cargo",      "air"),
+        ("📡",  "Intelligence",   "intelligence"),
+        ("🧪",  "Simulation",     "simulation"),
+        ("📞",  "Field Reports",  "haas"),
+        ("🗺️",  "Journey",        "journey"),
     ]
 
     for icon, label, key in NAV_ITEMS:
@@ -271,8 +321,7 @@ Return ONLY valid JSON (no markdown):
     n_ships = len(st.session_state.shipments)
     st.markdown(f"<div style='font-size:10px;color:#475569;font-weight:700;letter-spacing:1px;margin-bottom:4px'>MY SHIPMENTS ({n_ships})</div>", unsafe_allow_html=True)
 
-    if st.button("➕  Add Shipment", key="sb_add",
-                 use_container_width=True, type="primary"):
+    if st.button("➕  Add Shipment", key="sb_add", use_container_width=True, type="primary"):
         _go("add_shipment")
 
     shipments.render_shipment_list()
@@ -300,28 +349,44 @@ Return ONLY valid JSON (no markdown):
         st.session_state.gemini_model = None
         st.rerun()
 
+    # ── Keyboard Shortcuts ────────────────────────────
+    st.markdown("<hr style='border-color:rgba(96,165,250,0.1);margin:8px 0'>", unsafe_allow_html=True)
+    with st.expander("⌨️ Keyboard Shortcuts"):
+        st.markdown("""
+- `Ctrl+K` — AI Command Bar
+- `Ctrl+1-9` — Navigate pages
+- `Ctrl+R` — Refresh page
+        """)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN CONTENT — route using the query-param-synced `active` variable
 # ─────────────────────────────────────────────────────────────────────────────
 if active == "add_shipment" or st.session_state.show_add_form:
     shipments.render_add_form()
 elif active == "sea":
-    sea.render()
+    with st.spinner("Loading Sea & Maritime..."):
+        sea.render()
 elif active == "rail":
-    rail.render()
+    with st.spinner("Loading Rail Operations..."):
+        rail.render()
 elif active == "road":
-    road.render()
+    with st.spinner("Loading Road Logistics..."):
+        road.render()
 elif active == "air":
-    air.render()
+    with st.spinner("Loading Air Cargo..."):
+        air.render()
 elif active == "intelligence":
-    intelligence.render()
+    with st.spinner("Loading Intelligence Hub..."):
+        intelligence.render()
 elif active == "simulation":
     simulation.render()
 elif active == "haas":
-    haas.render()
+    with st.spinner("Loading Field Reports..."):
+        haas.render()
 elif active == "journey":
-    from logistiq.views import journey
-    journey.render()
+    with st.spinner("Loading Journey Tracker..."):
+        from logistiq.views import journey
+        journey.render()
 elif active == "shipment_detail":
     if st.session_state.get("selected_shipment"):
         shipments.render_shipment_detail(st.session_state.selected_shipment)
@@ -354,7 +419,7 @@ st.markdown(f"""
   <span class='status-divider'>│</span>
   <span style='color:{mode_color}'>{mode_label}</span>
   <div style='flex:1'></div>
-  <span style='color:#334155;font-size:10px'>LogistiQ v3.0 · Chennai–Vizag–Manesar</span>
+  <span style='color:#334155;font-size:10px'>LogistiQ v3.1 · Chennai–Vizag–Manesar</span>
 </div>
 <div style='height:44px'></div>
 """, unsafe_allow_html=True)

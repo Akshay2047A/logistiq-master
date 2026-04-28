@@ -28,9 +28,47 @@ def apply_design_system():
 /* ── Global ─────────────────────────────────────────── */
 html, body { font-family:'Inter',sans-serif !important; }
 .stApp { background: var(--bg-page); color:#e7efff; }
-.block-container { padding: 0 20px 60px !important; max-width:100% !important; }
-/* Hide the Streamlit top header bar that creates the white gap */
-header[data-testid="stHeader"] { display:none !important; }
+.block-container { padding: 0 20px 80px !important; max-width:100% !important; }
+.main .block-container { padding-bottom: 80px !important; }
+
+/* ── Header — transparent to keep sidebar toggle visible ── */
+header[data-testid="stHeader"] {
+  background: transparent !important;
+  border: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+}
+
+/* ── CRITICAL: Sidebar toggle always on top ─────────── */
+[data-testid="stSidebarCollapsedControl"] {
+  z-index: 99999 !important;
+  visibility: visible !important;
+  display: flex !important;
+  position: fixed !important;
+  top: 14px !important;
+  left: 14px !important;
+  background: rgba(255,107,53,0.25) !important;
+  border: 1px solid rgba(255,107,53,0.5) !important;
+  border-radius: 8px !important;
+  color: #FF6B35 !important;
+  width: 36px !important;
+  height: 36px !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+[data-testid="stSidebarCollapsedControl"] button {
+  visibility: visible !important;
+  display: flex !important;
+  z-index: 99999 !important;
+  color: #FF6B35 !important;
+  background: transparent !important;
+  border: none !important;
+}
+button[data-testid="baseButton-headerNoPadding"] {
+  visibility: visible !important;
+  z-index: 99999 !important;
+}
+
 [data-testid="stDecoration"] { display:none !important; }
 h1 { font-size:24px !important; font-weight:800 !important; color:#fff !important; margin:0 !important; }
 h2 { font-size:20px !important; font-weight:700 !important; color:#fff !important; margin:0 0 4px !important; }
@@ -52,6 +90,12 @@ footer { visibility:hidden; }
 [data-testid="stToolbar"] { display:none; }
 
 /* ── Sidebar ─────────────────────────────────────────── */
+section[data-testid="stSidebar"] {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+section[data-testid="stSidebar"] > div:first-child {
+  padding-top: 0 !important;
+}
 [data-testid="stSidebar"] {
   background: rgba(5,10,20,0.98) !important;
   border-right: 1px solid rgba(96,165,250,0.1) !important;
@@ -62,6 +106,7 @@ footer { visibility:hidden; }
   color: #94a3b8 !important; font-size:13px !important;
   font-family:'Inter',sans-serif !important;
   text-align:left !important;
+  transition: all 0.2s ease !important;
 }
 [data-testid="stSidebar"] .stButton>button:hover {
   background: rgba(255,107,53,0.08) !important;
@@ -81,6 +126,8 @@ footer { visibility:hidden; }
   border-radius: 12px; padding: 16px; margin: 6px 0;
   backdrop-filter: blur(8px);
   transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3),
+              inset 0 1px 0 rgba(255,255,255,0.05);
 }
 .glass-card:hover {
   border-color: rgba(96,165,250,0.4);
@@ -120,8 +167,8 @@ footer { visibility:hidden; }
   background: rgba(255,255,255,0.02); cursor:pointer;
   transition: background 0.2s;
 }
-.shipment-list-card:hover { 
-  background: rgba(255,107,53,0.08) !important; 
+.shipment-list-card:hover {
+  background: rgba(255,107,53,0.08) !important;
   border-left-color: #FF6B35 !important;
   cursor: pointer;
 }
@@ -200,7 +247,8 @@ footer { visibility:hidden; }
 .status-bar {
   position:fixed; bottom:0; left:0; right:0; z-index:998;
   background:rgba(5,10,20,0.97); border-top:1px solid rgba(96,165,250,0.08);
-  padding: 5px 20px; margin-left: 0; display:flex; align-items:center; gap:14px;
+  padding: 5px max(20px, env(safe-area-inset-left));
+  display:flex; align-items:center; gap:14px;
   font-size:11px; color:#475569; backdrop-filter:blur(12px);
 }
 .status-divider { color:#1e293b; }
@@ -219,12 +267,14 @@ footer { visibility:hidden; }
   color: #FF6B35 !important; border-radius: 8px !important;
   font-weight: 600 !important; font-size:13px !important;
   font-family:'Inter',sans-serif !important;
-  transition: all 0.18s !important;
+  transition: all 0.2s ease !important;
+  letter-spacing: 0.3px !important;
 }
 .stButton>button:hover {
   background: rgba(255,107,53,0.2) !important;
   border-color: #FF6B35 !important;
-  box-shadow: 0 0 10px rgba(255,107,53,0.18) !important;
+  box-shadow: 0 4px 15px rgba(255,107,53,0.25) !important;
+  transform: translateY(-1px) !important;
 }
 .stButton>button[kind="primary"] {
   background: linear-gradient(135deg,#FF6B35,#ff8c5a) !important;
@@ -405,6 +455,13 @@ div[data-testid="stMetricLabel"] { color:#64748b !important; font-size:10px !imp
   background: linear-gradient(135deg, rgba(96,165,250,0.08), rgba(167,139,250,0.05));
   border: 1px solid rgba(96,165,250,0.25);
   border-radius: 12px; padding: 14px;
+}
+
+/* ── Mobile responsiveness ── */
+@media (max-width: 768px) {
+  .block-container { padding: 0 8px 80px !important; }
+  .metric-value { font-size: 16px !important; }
+  .glass-card { padding: 10px !important; }
 }
 
 /* ── Smooth transitions ── */
