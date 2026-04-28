@@ -118,22 +118,11 @@ def render_top_navbar(active_page: str):
         ("📞", "Field",      "haas"),
         ("🗺️", "Journey",    "journey"),
     ]
-    st.markdown("""
-<div style='
-  background:rgba(5,10,20,0.97);
-  border-bottom:1px solid rgba(96,165,250,0.1);
-  padding:8px 20px 6px;
-  display:flex; align-items:center; gap:6px;
-  position:sticky; top:0; z-index:500;
-  backdrop-filter:blur(12px);
-  margin-bottom:12px;
-'>
-""", unsafe_allow_html=True)
 
-    logo_col, *nav_cols, spacer = st.columns([2] + [1] * len(pages) + [1])
+    logo_col, *nav_cols, mode_col = st.columns([2] + [1] * len(pages) + [1.5])
     with logo_col:
         st.markdown(
-            "<span style='color:#FF6B35;font-weight:800;font-size:18px;line-height:36px'>🚢 LogistiQ</span>",
+            "<div style='padding-top:2px'><span style='color:#FF6B35;font-weight:800;font-size:22px;letter-spacing:-0.5px;'>🚢 LogistiQ</span></div>",
             unsafe_allow_html=True
         )
     for i, (icon, label, key) in enumerate(pages):
@@ -147,7 +136,11 @@ def render_top_navbar(active_page: str):
             ):
                 _go(key)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    with mode_col:
+        mode_text = "🟡 DEMO" if st.session_state.get("demo_mode") else "🟢 LIVE"
+        st.markdown(f"<div style='padding-top:8px;text-align:right;font-weight:700;font-size:12px;color:#94a3b8'>{mode_text}</div>", unsafe_allow_html=True)
+
+    st.markdown("<hr style='border-color:rgba(96,165,250,0.1);margin:4px 0 16px'>", unsafe_allow_html=True)
 
 render_top_navbar(active)
 

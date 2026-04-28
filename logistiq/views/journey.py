@@ -13,9 +13,34 @@ def render(*args, **kwargs):
     st.markdown("### 🗺️ Full Shipment Journey")
     shp = st.session_state.get("selected_shipment")
     
-    if not shp:
-        st.info("No shipment selected. Please select a shipment from the sidebar.")
+    shps = st.session_state.get("shipments", [])
+    if not shps:
+        st.info("No shipments available in the system.")
         return
+
+    # Shipment Selector
+    shp_options = {f"{s['id']} - {s['cargo_desc']}": s for s in shps}
+    
+    col_sel, _ = st.columns([2, 3])
+    with col_sel:
+        # Determine index of currently selected shipment if any
+        current_idx = 0
+        if shp:
+            for i, s in enumerate(shps):
+                if s['id'] == shp.get('id'):
+                    current_idx = i
+                    break
+        
+        selected_label = st.selectbox(
+            "Select Shipment to View Journey",
+            options=list(shp_options.keys()),
+            index=current_idx,
+            key="journey_shp_select"
+        )
+        
+        if selected_label:
+            shp = shp_options[selected_label]
+            st.session_state.selected_shipment = shp
 
     st.markdown(f"**Shipment ID:** {shp.get('id', 'N/A')} | **Cargo:** {shp.get('cargo_desc', 'N/A')}")
     st.markdown("---")
